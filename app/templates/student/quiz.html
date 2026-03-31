@@ -1,0 +1,86 @@
+{% extends "shared/base.html" %}
+{% block title %}Quiz – {{ chapter.title }}{% endblock %}
+
+{% block content %}
+<!-- Progress Bar -->
+<div class="quiz-progress-wrap">
+  <div class="quiz-progress-bar" style="width: {{ ((question_index) / total_questions * 100)|int }}%"></div>
+</div>
+
+<div class="quiz-container">
+  <!-- Header -->
+  <div class="quiz-header">
+    <span class="quiz-chapter-name">{{ chapter.title }}</span>
+    <span class="quiz-counter">Question {{ question_index + 1 }} of {{ total_questions }}</span>
+    <span class="quiz-timer" id="quiz-timer">⏱ 60s</span>
+  </div>
+
+  <!-- Question -->
+  <div class="question-text">
+    {{ question.question_text }}
+  </div>
+
+  <!-- Options -->
+  <form method="POST" action="{{ url_for('student.submit_answer') }}" id="quiz-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="session_id" value="{{ session_id }}">
+    <input type="hidden" name="question_id" value="{{ question.id }}">
+    <input type="hidden" name="question_index" value="{{ question_index }}">
+    <input type="hidden" name="chosen_answer" id="chosen-answer" value="">
+    <input type="hidden" name="time_taken" id="time-taken" value="60">
+
+    <div class="options-grid">
+      {% for label, text in [('A', question.option_a), ('B', question.option_b),
+                              ('C', question.option_c), ('D', question.option_d)] %}
+      <button type="button"
+              class="option-btn"
+              data-value="{{ label }}"
+              onclick="selectOption(this)">
+        <span class="option-label">{{ label }}</span>
+        <span class="option-text">{{ text }}</span>
+      </button>
+      {% endfor %}
+    </div>
+
+    <div class="quiz-actions">
+      <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+        Submit Answer →
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+const TOTAL_TIME = 60;
+let timeLeft = TOTAL_TIME;
+let timerInterval;
+const timerEl = document.getElementById('quiz-timer');
+const timeInput = document.getElementById('time-taken');
+
+function startTimer() {
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timerEl.textContent = '⏱ ' + timeLeft + 's';
+    if (timeLeft <= 10) timerEl.classList.add('timer-danger');
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      timeInput.value = TOTAL_TIME;
+      document.getElementById('quiz-form').submit();
+    }
+  }, 1000);
+}
+
+function selectOption(btn) {
+  document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('chosen-answer').value = btn.dataset.value;
+}
+
+document.getElementById('quiz-form').addEventListener('submit', function() {
+  clearInterval(timerInterval);
+  timeInput.value = TOTAL_TIME - timeLeft;
+});
+
+startTimer();
+</script>
+{% endblock %}

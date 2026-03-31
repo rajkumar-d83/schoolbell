@@ -1,0 +1,40 @@
+{% extends "shared/base.html" %}
+{% block title %}Subjects – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header student-header">
+  <h1>📚 Your Subjects</h1>
+  <p class="subtitle">Grade {{ current_user.grade }} curriculum</p>
+</div>
+
+{% if subjects %}
+<div class="card-grid">
+  {% for subject in subjects %}
+  <a href="{{ url_for('student.chapters', subject_id=subject.id) }}" class="subject-card">
+    <div class="subject-icon">
+      {% if 'science' in subject.name.lower() %}🔬
+      {% elif 'math' in subject.name.lower() %}🔢
+      {% elif 'english' in subject.name.lower() %}📝
+      {% elif 'social' in subject.name.lower() or 'history' in subject.name.lower() %}🌍
+      {% elif 'hindi' in subject.name.lower() %}🇮🇳
+      {% else %}📖{% endif %}
+    </div>
+    <div class="subject-name">{{ subject.name }}</div>
+    <div class="subject-meta">
+      {{ subject.chapters|length }} chapter(s)
+      &nbsp;|&nbsp;
+      {% set ready = subject.chapters|selectattr('is_processed')|list|length %}
+      {{ ready }} quiz{{ 'zes' if ready != 1 else '' }} ready
+    </div>
+    <div class="subject-action">Explore →</div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">📭</div>
+  <h3>No subjects yet</h3>
+  <p>Your parent hasn't added any subjects for Grade {{ current_user.grade }} yet.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "shared/base.html" %}
+{% block title %}Subjects – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>📚 Manage Subjects</h1>
+</div>
+
+<div class="two-col-layout">
+
+  <!-- Left: existing subjects -->
+  <div class="col-main">
+    <h3>Existing Subjects</h3>
+    {% for grade in subjects_by_grade.keys()|sort %}
+    <div class="grade-group">
+      <div class="grade-label">Grade {{ grade }}</div>
+      {% for subject in subjects_by_grade[grade] %}
+      <div class="subject-row">
+        <span class="subject-row-name">{{ subject.name }}</span>
+        <span class="subject-row-meta">{{ subject.chapters|length }} chapter(s)</span>
+        <a href="{{ url_for('parent.subject_chapters', subject_id=subject.id) }}"
+           class="btn btn-sm btn-outline">Manage Chapters</a>
+        <form method="POST"
+              action="{{ url_for('parent.delete_subject', subject_id=subject.id) }}"
+              style="display:inline"
+              onsubmit="return confirm('Delete subject &quot;{{ subject.name }}&quot; and ALL its chapters? This cannot be undone.')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-danger ml-1">Delete</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    {% if not subjects_by_grade %}
+    <div class="empty-state">No subjects yet. Add one on the right →</div>
+    {% endif %}
+  </div>
+
+  <!-- Right: add subject form -->
+  <div class="col-side">
+    <div class="form-card">
+      <h3>Add New Subject</h3>
+      <form method="POST" action="{{ url_for('parent.subjects') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label class="form-label">Subject Name</label>
+          <input type="text" name="name" class="form-control"
+                 placeholder="e.g. Science" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Grade</label>
+          <select name="grade" class="form-control" required>
+            <option value="">— Select —</option>
+            <option value="3">Grade 3</option>
+            <option value="4">Grade 4</option>
+            <option value="5">Grade 5</option>
+            <option value="6">Grade 6</option>
+            <option value="7">Grade 7</option>
+            <option value="8">Grade 8</option>
+            <option value="9">Grade 9</option>
+            <option value="10">Grade 10</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">Add Subject</button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

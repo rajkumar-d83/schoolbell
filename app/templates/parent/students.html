@@ -1,0 +1,59 @@
+{% extends "shared/base.html" %}
+{% block title %}Students – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>👥 Students</h1>
+</div>
+
+<div class="mb-2">
+  <a href="{{ url_for('parent.add_student') }}" class="btn btn-primary">+ Add Student</a>
+</div>
+
+{% if students %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Username</th>
+        <th>Grade</th>
+        <th>Quizzes Taken</th>
+        <th>Avg Score</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in students %}
+      {% set sessions = student.quiz_sessions|selectattr('is_completed')|list %}
+      {% set avg = (sessions|sum(attribute='score_percent') / sessions|length)|round(0) if sessions else 0 %}
+      <tr>
+        <td><strong>{{ student.name }}</strong></td>
+        <td><code>{{ student.username }}</code></td>
+        <td>Grade {{ student.grade }}</td>
+        <td>{{ sessions|length }}</td>
+        <td>
+          {% if sessions %}
+          <span class="score-badge {% if avg >= 70 %}score-good{% elif avg >= 40 %}score-ok{% else %}score-poor{% endif %}">
+            {{ avg|int }}%
+          </span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('parent.student_report', student_id=student.id) }}"
+             class="btn btn-sm btn-outline">View Report</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">👶</div>
+  <h3>No students yet</h3>
+  <p>Add your first student to get started.</p>
+  <a href="{{ url_for('parent.add_student') }}" class="btn btn-primary mt-1">Add Student</a>
+</div>
+{% endif %}
+{% endblock %}

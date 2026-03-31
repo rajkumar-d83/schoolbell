@@ -1,0 +1,13 @@
+{% extends "shared/base.html" %}
+{% block title %}Server Error – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="empty-state" style="margin-top:4rem;">
+  <div class="empty-icon" style="font-size:4rem;">⚠️</div>
+  <h2 style="font-size:1.75rem; margin:.75rem 0 .5rem;">Something Went Wrong</h2>
+  <p style="color:#5f6368; margin-bottom:1.5rem;">
+    An unexpected error occurred. Please try again or contact support.
+  </p>
+  <a href="/" class="btn btn-primary">Go to Dashboard</a>
+</div>
+{% endblock %}

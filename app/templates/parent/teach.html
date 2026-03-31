@@ -1,0 +1,228 @@
+{% extends "shared/base.html" %}
+{% block title %}Teaching Mode – {{ chapter.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Override base layout for fullscreen teaching mode */
+  body { overflow: hidden; }
+  .navbar { position: sticky; top: 0; z-index: 200; }
+  main { padding: 0 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="teach-layout" id="teach-layout">
+
+  <!-- ═══════════ LEFT: PDF VIEWER ═══════════ -->
+  <div class="pdf-panel" id="pdf-panel">
+    <div class="pdf-canvas-wrap" id="canvas-wrap">
+      <canvas id="pdf-canvas"></canvas>
+      <div class="pdf-loading" id="pdf-loading">
+        <div class="spinner-ring"></div>
+        <span>Loading PDF…</span>
+      </div>
+    </div>
+
+    <!-- PDF Controls -->
+    <div class="pdf-controls">
+      <button class="pdf-btn" onclick="updatePage(currentPage - 1)" title="Previous (←)">◀ Prev</button>
+      <span class="page-indicator" id="page-indicator">Page — of —</span>
+      <button class="pdf-btn" onclick="updatePage(currentPage + 1)" title="Next (→)">Next ▶</button>
+      <div class="pdf-ctrl-sep"></div>
+      <button class="pdf-btn" onclick="changeZoom(-0.25)" title="Zoom Out">−</button>
+      <span class="zoom-label" id="zoom-label">150%</span>
+      <button class="pdf-btn" onclick="changeZoom(0.25)" title="Zoom In">+</button>
+      <div class="pdf-ctrl-sep"></div>
+      <button class="pdf-btn" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+    </div>
+  </div>
+
+  <!-- ═══════════ RIGHT: TEACHING CONTROLS ═══════════ -->
+  <div class="teach-panel" id="teach-panel">
+
+    <!-- Chapter Info -->
+    <div class="teach-chapter-info">
+      <div class="teach-subject-tag">{{ subject.name }} · Grade {{ subject.grade }}</div>
+      <h2 class="teach-chapter-title">{{ chapter.title }}</h2>
+    </div>
+
+    <!-- Student Selector -->
+    <div class="teach-section">
+      <label class="teach-label">👦 Teaching student:</label>
+      <select class="form-control" id="student-select" onchange="saveStudentChoice()">
+        <option value="">— Select student (optional) —</option>
+        {% for student in students %}
+        <option value="{{ student.id }}">{{ student.name }} (Grade {{ student.grade }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Teaching Notes -->
+    <div class="teach-section">
+      <label class="teach-label">📓 Teaching Notes</label>
+      <textarea class="teach-notes" id="teach-notes"
+                placeholder="Type notes here… They will auto-save when you click away."
+                rows="5">{{ '' }}</textarea>
+      <div class="notes-status" id="notes-status"></div>
+    </div>
+
+    <!-- Questions to Cover (collapsible) -->
+    <div class="teach-section">
+      <button class="collapsible-toggle" onclick="toggleQuestions(this)">
+        ❓ Questions to Cover <span id="q-arrow">▼</span>
+      </button>
+      <div class="questions-list" id="questions-list">
+        {% if questions %}
+          {% for q in questions %}
+          <div class="teach-q-item">
+            <span class="teach-q-num">{{ loop.index }}</span>
+            <span class="teach-q-text">{{ q.question_text }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="no-questions">No questions generated yet.
+            <a href="{{ url_for('parent.generate_questions', chapter_id=chapter.id) }}">Generate now →</a>
+          </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Ready for Quiz -->
+    <div class="teach-cta">
+      {% if questions %}
+      <a href="{{ url_for('student.start_quiz', chapter_id=chapter.id) }}"
+         class="btn btn-quiz-ready">
+        ✅ Ready for Quiz →
+      </a>
+      {% else %}
+      <a href="{{ url_for('parent.generate_questions', chapter_id=chapter.id) }}"
+         class="btn btn-primary">
+        Generate Questions First →
+      </a>
+      {% endif %}
+      <a href="{{ url_for('parent.view_questions', chapter_id=chapter.id) }}"
+         class="back-link mt-1">← Back to Chapter</a>
+    </div>
+
+  </div><!-- /teach-panel -->
+</div><!-- /teach-layout -->
+
+
+<!-- ═══════════ PDF.js + Teaching Script ═══════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const PDF_URL       = "{{ url_for('parent.serve_pdf', chapter_id=chapter.id) }}";
+const TEACH_SESSION = {{ teach_session_id }};
+const NOTES_URL     = "{{ url_for('parent.save_teach_notes', session_id=teach_session_id) }}";
+
+// ── State ───────────────────────────────────────────────────────────────────
+let pdfDoc      = null;
+let currentPage = 1;
+let numPages    = 0;
+let scale       = 1.5;
+let renderTask  = null;
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const canvas    = document.getElementById('pdf-canvas');
+const ctx       = canvas.getContext('2d');
+const indicator = document.getElementById('page-indicator');
+const loading   = document.getElementById('pdf-loading');
+const zoomLabel = document.getElementById('zoom-label');
+
+// ── Load PDF ─────────────────────────────────────────────────────────────────
+pdfjsLib.getDocument(PDF_URL).promise
+  .then(doc => {
+    pdfDoc   = doc;
+    numPages = doc.numPages;
+    loading.style.display = 'none';
+    renderPage(currentPage);
+  })
+  .catch(err => {
+    loading.innerHTML = '<span style="color:#ff6b6b">Failed to load PDF. Check if file exists.</span>';
+    console.error(err);
+  });
+
+// ── Render Page ───────────────────────────────────────────────────────────────
+async function renderPage(n) {
+  if (!pdfDoc) return;
+  if (renderTask) { renderTask.cancel(); }
+
+  const page     = await pdfDoc.getPage(n);
+  const viewport = page.getViewport({ scale });
+
+  canvas.width  = viewport.width;
+  canvas.height = viewport.height;
+
+  renderTask = page.render({ canvasContext: ctx, viewport });
+  await renderTask.promise;
+  indicator.textContent = `Page ${n} of ${numPages}`;
+  zoomLabel.textContent = Math.round(scale * 100) + '%';
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function updatePage(n) {
+  n = Math.max(1, Math.min(numPages || 1, n));
+  if (n === currentPage && pdfDoc) return;
+  currentPage = n;
+  renderPage(currentPage);
+}
+
+function changeZoom(delta) {
+  scale = Math.max(0.5, Math.min(3.0, scale + delta));
+  renderPage(currentPage);
+}
+
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowLeft')  updatePage(currentPage - 1);
+  if (e.key === 'ArrowRight') updatePage(currentPage + 1);
+});
+
+// ── Fullscreen ────────────────────────────────────────────────────────────────
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.getElementById('teach-layout').requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+// ── Notes Autosave ────────────────────────────────────────────────────────────
+const notesEl  = document.getElementById('teach-notes');
+const statusEl = document.getElementById('notes-status');
+
+notesEl.addEventListener('blur', saveNotes);
+
+function saveNotes() {
+  statusEl.textContent = 'Saving…';
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+  fetch(NOTES_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ notes: notesEl.value })
+  })
+  .then(r => r.json())
+  .then(() => { statusEl.textContent = '✓ Saved'; setTimeout(() => statusEl.textContent = '', 2000); })
+  .catch(() => { statusEl.textContent = '✗ Save failed'; });
+}
+
+// ── Student selector ──────────────────────────────────────────────────────────
+function saveStudentChoice() {
+  // Future: persist student selection to teach session via AJAX
+}
+
+// ── Questions collapsible ─────────────────────────────────────────────────────
+function toggleQuestions(btn) {
+  const list = document.getElementById('questions-list');
+  const arrow = document.getElementById('q-arrow');
+  const isOpen = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : 'block';
+  arrow.textContent = isOpen ? '▶' : '▼';
+}
+</script>
+{% endblock %}

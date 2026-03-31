@@ -1,0 +1,67 @@
+{% extends "shared/base.html" %}
+{% block title %}Generate Questions – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>🤖 Generate Quiz Questions</h1>
+  <p class="subtitle">Claude AI will read the chapter and create MCQ questions</p>
+</div>
+
+<div class="form-card">
+  <div class="chapter-info-box">
+    <div class="chapter-info-title">{{ chapter.title }}</div>
+    <div class="chapter-info-meta">
+      {{ chapter.subject.name }} &nbsp;|&nbsp; Grade {{ chapter.subject.grade }}
+      {% if page_count %}&nbsp;|&nbsp; ~{{ page_count }} page(s) extracted{% endif %}
+    </div>
+  </div>
+
+  <form method="POST" action="{{ url_for('parent.generate_questions', chapter_id=chapter.id) }}"
+        id="gen-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label class="form-label">Number of Questions: <strong id="q-count">10</strong></label>
+      <input type="range" name="num_questions" id="q-slider"
+             min="5" max="20" value="10" class="range-slider"
+             oninput="document.getElementById('q-count').textContent = this.value">
+      <div class="range-labels">
+        <span>5 (quick)</span>
+        <span>20 (thorough)</span>
+      </div>
+    </div>
+
+    <div class="ai-note">
+      <span class="ai-icon">✨</span>
+      Claude will generate MCQ questions with 4 options, correct answers, explanations,
+      difficulty ratings, and topic tags — all automatically from the PDF text.
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-lg" id="gen-btn"
+              onclick="showSpinner()">
+        Generate Questions →
+      </button>
+      <a href="{{ url_for('parent.dashboard') }}" class="btn btn-outline ml-1">Skip for now</a>
+    </div>
+  </form>
+
+  <!-- Loading Spinner (hidden initially) -->
+  <div class="spinner-overlay" id="spinner" style="display:none">
+    <div class="spinner-box">
+      <div class="spinner-ring"></div>
+      <div class="spinner-text">Claude is reading the chapter…</div>
+      <div class="spinner-subtext">This may take 15–30 seconds</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showSpinner() {
+  setTimeout(() => {
+    document.getElementById('spinner').style.display = 'flex';
+    document.getElementById('gen-btn').disabled = true;
+  }, 100);
+}
+</script>
+{% endblock %}

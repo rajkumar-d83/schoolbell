@@ -1,0 +1,58 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ subject.name }} Chapters – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header student-header">
+  <h1>{{ subject.name }}</h1>
+  <p class="subtitle">Grade {{ subject.grade }} &nbsp;|&nbsp; {{ chapters|length }} chapter(s)</p>
+</div>
+
+<a href="{{ url_for('student.subjects') }}" class="btn btn-outline mb-2">← Back to Subjects</a>
+
+{% if chapters %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Chapter</th>
+        <th>Questions</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for chapter in chapters %}
+      <tr>
+        <td class="chapter-num">{{ chapter.chapter_number or '—' }}</td>
+        <td>
+          <strong>{{ chapter.title }}</strong>
+        </td>
+        <td>
+          {% set qcount = chapter.questions|length %}
+          {% if qcount > 0 %}
+            <span class="badge badge-success">{{ qcount }} Q</span>
+          {% else %}
+            <span class="badge badge-muted">No questions</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if chapter.is_processed %}
+          <a href="{{ url_for('student.start_quiz', chapter_id=chapter.id) }}"
+             class="btn btn-primary btn-sm">Start Quiz →</a>
+          {% else %}
+          <button class="btn btn-sm btn-disabled" disabled>Not Ready</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">📂</div>
+  <h3>No chapters yet</h3>
+  <p>Your parent hasn't uploaded any chapters for this subject.</p>
+</div>
+{% endif %}
+{% endblock %}

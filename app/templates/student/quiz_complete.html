@@ -1,0 +1,80 @@
+{% extends "shared/base.html" %}
+{% block title %}Quiz Complete – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="quiz-complete-wrap">
+
+  <!-- Score Circle -->
+  <div class="score-circle-wrap">
+    <div class="score-circle {% if quiz_session.score_percent >= 70 %}score-great{% elif quiz_session.score_percent >= 40 %}score-ok{% else %}score-poor{% endif %}">
+      <span class="score-percent">{{ '%.0f'|format(quiz_session.score_percent) }}%</span>
+    </div>
+    <h2 class="score-message">
+      {% if quiz_session.score_percent >= 80 %}🏆 Excellent work!
+      {% elif quiz_session.score_percent >= 60 %}👍 Well done!
+      {% elif quiz_session.score_percent >= 40 %}📚 Keep practising!
+      {% else %}💪 Don't give up — try again!{% endif %}
+    </h2>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="result-stats">
+    <div class="result-stat">
+      <div class="result-stat-num correct">{{ quiz_session.correct_answers }}</div>
+      <div class="result-stat-label">Correct</div>
+    </div>
+    <div class="result-stat">
+      <div class="result-stat-num wrong">{{ quiz_session.total_questions - quiz_session.correct_answers }}</div>
+      <div class="result-stat-label">Wrong</div>
+    </div>
+    <div class="result-stat">
+      <div class="result-stat-num">{{ quiz_session.total_questions }}</div>
+      <div class="result-stat-label">Total</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="result-actions">
+    <a href="{{ url_for('student.start_quiz', chapter_id=quiz_session.chapter_id) }}"
+       class="btn btn-primary">🔄 Try Again</a>
+    <a href="{{ url_for('student.subjects') }}" class="btn btn-outline ml-1">Back to Subjects</a>
+  </div>
+
+  <!-- Question Review -->
+  <div class="review-section">
+    <h3>📋 Question Review</h3>
+    {% for attempt in attempts %}
+    <div class="review-card {% if attempt.is_correct %}review-correct{% else %}review-wrong{% endif %}">
+      <div class="review-q-num">Q{{ loop.index }}</div>
+      <div class="review-body">
+        <p class="review-question">{{ attempt.question.question_text }}</p>
+        <div class="review-answers">
+          <span class="review-label">Your answer:</span>
+          <span class="{% if attempt.is_correct %}answer-correct{% else %}answer-wrong{% endif %}">
+            {{ attempt.chosen_answer or 'Skipped' }}
+            {% if attempt.chosen_answer %}
+              – {{ attempt.question['option_' + attempt.chosen_answer.lower()] if attempt.chosen_answer else '' }}
+            {% endif %}
+          </span>
+        </div>
+        {% if not attempt.is_correct %}
+        <div class="review-answers">
+          <span class="review-label">Correct answer:</span>
+          <span class="answer-correct">
+            {{ attempt.question.correct_answer }}
+            – {{ attempt.question['option_' + attempt.question.correct_answer.lower()] }}
+          </span>
+        </div>
+        {% endif %}
+        {% if attempt.question.explanation %}
+        <div class="review-explanation">
+          💡 {{ attempt.question.explanation }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ student.name }}'s Report – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>📊 {{ student.name }}'s Report</h1>
+  <p class="subtitle">Grade {{ student.grade }} &nbsp;|&nbsp; {{ student.username }}</p>
+</div>
+
+<a href="{{ url_for('parent.students') }}" class="btn btn-outline mb-2">← Back to Students</a>
+
+<!-- Summary Cards -->
+<div class="card-grid three-col">
+  <div class="stat-card">
+    <div class="stat-icon">📝</div>
+    <div class="stat-number">{{ performance.total_sessions }}</div>
+    <div class="stat-label">Total Quizzes</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">⭐</div>
+    <div class="stat-number">{{ '%.0f'|format(performance.avg_score) }}%</div>
+    <div class="stat-label">Average Score</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">✅</div>
+    <div class="stat-number">{{ performance.total_correct }}</div>
+    <div class="stat-label">Correct Answers</div>
+  </div>
+</div>
+
+<!-- Subject Performance -->
+{% if performance.subject_scores %}
+<div class="section-title">📚 Subject Breakdown</div>
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>Subject</th><th>Quizzes</th><th>Avg Score</th><th>Bar</th></tr>
+    </thead>
+    <tbody>
+      {% for item in performance.subject_scores %}
+      <tr>
+        <td><strong>{{ item.subject_name }}</strong></td>
+        <td>{{ item.quiz_count }}</td>
+        <td>
+          <span class="score-badge {% if item.avg_score >= 70 %}score-good{% elif item.avg_score >= 40 %}score-ok{% else %}score-poor{% endif %}">
+            {{ '%.0f'|format(item.avg_score) }}%
+          </span>
+        </td>
+        <td>
+          <div class="mini-progress">
+            <div class="mini-bar {% if item.avg_score >= 70 %}bar-green{% elif item.avg_score >= 40 %}bar-orange{% else %}bar-red{% endif %}"
+                 style="width: {{ item.avg_score|int }}%"></div>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Weak Topics -->
+{% if performance.weak_topics %}
+<div class="section-title">⚠️ Weak Topics</div>
+<div class="weak-topics-grid">
+  {% for topic in performance.weak_topics %}
+  <div class="weak-topic-card">
+    <span class="topic-name">{{ topic.tag }}</span>
+    <span class="badge {% if topic.accuracy < 40 %}badge-danger{% else %}badge-warning{% endif %}">
+      {{ '%.0f'|format(topic.accuracy) }}% accuracy
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Recent Sessions -->
+{% if performance.recent_sessions %}
+<div class="section-title">🕐 Quiz History</div>
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>Chapter</th><th>Subject</th><th>Score</th><th>Result</th><th>Date</th></tr>
+    </thead>
+    <tbody>
+      {% for session in performance.recent_sessions %}
+      <tr>
+        <td>{{ session.chapter.title }}</td>
+        <td>{{ session.chapter.subject.name }}</td>
+        <td>
+          <span class="score-badge {% if session.score_percent >= 70 %}score-good{% elif session.score_percent >= 40 %}score-ok{% else %}score-poor{% endif %}">
+            {{ '%.0f'|format(session.score_percent) }}%
+          </span>
+        </td>
+        <td>{{ session.correct_answers }}/{{ session.total_questions }}</td>
+        <td>{{ session.completed_at.strftime('%d %b %Y') if session.completed_at else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if not performance.recent_sessions %}
+<div class="empty-state">
+  <div class="empty-icon">📊</div>
+  <h3>No quiz data yet</h3>
+  <p>{{ student.name }} hasn't taken any quizzes yet.</p>
+</div>
+{% endif %}
+{% endblock %}

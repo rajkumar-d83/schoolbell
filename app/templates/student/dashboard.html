@@ -1,0 +1,97 @@
+{% extends "shared/base.html" %}
+{% block title %}Dashboard – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header student-header">
+  <div class="header-inner">
+    <h1>👋 Hello, {{ current_user.name }}!</h1>
+    <p class="subtitle">Grade {{ current_user.grade }} &nbsp;|&nbsp; Keep learning every day!</p>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="card-grid three-col">
+  <div class="stat-card">
+    <div class="stat-icon">📝</div>
+    <div class="stat-number">{{ performance.total_sessions }}</div>
+    <div class="stat-label">Quizzes Taken</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">⭐</div>
+    <div class="stat-number">{{ '%.0f'|format(performance.avg_score) }}%</div>
+    <div class="stat-label">Average Score</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">✅</div>
+    <div class="stat-number">{{ performance.total_correct }}</div>
+    <div class="stat-label">Correct Answers</div>
+  </div>
+</div>
+
+<!-- Weak Topics Alert -->
+{% if performance.weak_topics %}
+<div class="alert alert-warning mt-2">
+  <strong>⚠️ Topics to Review:</strong>
+  <div class="weak-topic-list">
+    {% for topic in performance.weak_topics %}
+    <span class="badge badge-danger">{{ topic.tag }} ({{ '%.0f'|format(topic.accuracy) }}%)</span>
+    {% endfor %}
+  </div>
+  <p class="mt-1 mb-0 small">Ask your teacher to help you with these topics before your next quiz.</p>
+</div>
+{% endif %}
+
+<!-- Subject Quick Start -->
+<div class="section-title">📚 Your Subjects</div>
+{% if subjects %}
+<div class="card-grid">
+  {% for subject in subjects %}
+  <a href="{{ url_for('student.chapters', subject_id=subject.id) }}" class="subject-card">
+    <div class="subject-icon">📖</div>
+    <div class="subject-name">{{ subject.name }}</div>
+    <div class="subject-meta">{{ subject.chapters|length }} chapter(s)</div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No subjects available yet. Ask your parent to add some!</div>
+{% endif %}
+
+<!-- Recent Sessions -->
+{% if performance.recent_sessions %}
+<div class="section-title mt-2">🕐 Recent Quizzes</div>
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Chapter</th>
+        <th>Subject</th>
+        <th>Score</th>
+        <th>Questions</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for session in performance.recent_sessions %}
+      <tr>
+        <td>{{ session.chapter.title }}</td>
+        <td>{{ session.chapter.subject.name }}</td>
+        <td>
+          <span class="score-badge {% if session.score_percent >= 70 %}score-good{% elif session.score_percent >= 40 %}score-ok{% else %}score-poor{% endif %}">
+            {{ '%.0f'|format(session.score_percent) }}%
+          </span>
+        </td>
+        <td>{{ session.correct_answers }}/{{ session.total_questions }}</td>
+        <td>{{ session.completed_at.strftime('%d %b') if session.completed_at else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="mt-2">
+  <a href="{{ url_for('student.subjects') }}" class="btn btn-primary">Start a Quiz →</a>
+  <a href="{{ url_for('student.performance') }}" class="btn btn-outline ml-1">View Performance</a>
+</div>
+{% endblock %}

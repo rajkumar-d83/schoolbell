@@ -1,0 +1,30 @@
+{% extends "shared/base.html" %}
+{% block title %}Login – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">🔔</div>
+    <div class="login-title">SchoolBell</div>
+
+    <form method="POST" action="{{ url_for('auth.login') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" name="username" class="form-control"
+               placeholder="Enter your username" required autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" class="form-control"
+               placeholder="Enter your password" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-full">Log In →</button>
+    </form>
+
+    <p style="text-align:center; margin-top:1rem; font-size:.85rem; color:#666;">
+      CBSE Learning Portal &nbsp;|&nbsp; Grades 3 &amp; 7
+    </p>
+  </div>
+</div>
+{% endblock %}

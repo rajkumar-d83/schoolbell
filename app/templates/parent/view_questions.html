@@ -1,0 +1,68 @@
+{% extends "shared/base.html" %}
+{% block title %}Questions – {{ chapter.title }}{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>❓ Quiz Questions</h1>
+  <p class="subtitle">{{ chapter.title }} &nbsp;|&nbsp; {{ chapter.subject.name }}</p>
+</div>
+
+<div class="mb-2 action-bar">
+  <a href="{{ url_for('parent.dashboard') }}" class="btn btn-outline">← Dashboard</a>
+  {% if chapter.pdf_filename %}
+  <a href="{{ url_for('parent.teach', chapter_id=chapter.id) }}"
+     class="btn btn-teach ml-1">🖥️ Teach This Chapter</a>
+  {% endif %}
+  <a href="{{ url_for('parent.generate_questions', chapter_id=chapter.id) }}"
+     class="btn btn-outline ml-1">🔄 Regenerate</a>
+</div>
+
+{% if questions %}
+<div class="table-wrap">
+  <table class="data-table questions-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Question</th>
+        <th>Answer</th>
+        <th>Difficulty</th>
+        <th>Topic</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for q in questions %}
+      <tr>
+        <td class="q-index">{{ loop.index }}</td>
+        <td class="q-text">{{ q.question_text }}</td>
+        <td>
+          <span class="answer-tag">{{ q.correct_answer }}</span>
+          <span class="answer-option-text">
+            {% if q.correct_answer == 'A' %}{{ q.option_a }}
+            {% elif q.correct_answer == 'B' %}{{ q.option_b }}
+            {% elif q.correct_answer == 'C' %}{{ q.option_c }}
+            {% else %}{{ q.option_d }}{% endif %}
+          </span>
+        </td>
+        <td>
+          <span class="badge {% if q.difficulty == 'easy' %}badge-success
+                             {% elif q.difficulty == 'hard' %}badge-danger
+                             {% else %}badge-info{% endif %}">
+            {{ q.difficulty }}
+          </span>
+        </td>
+        <td class="topic-tag-cell">{{ q.topic_tag or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">❓</div>
+  <h3>No questions yet</h3>
+  <p>Generate questions using Claude AI.</p>
+  <a href="{{ url_for('parent.generate_questions', chapter_id=chapter.id) }}"
+     class="btn btn-primary mt-1">Generate Questions</a>
+</div>
+{% endif %}
+{% endblock %}

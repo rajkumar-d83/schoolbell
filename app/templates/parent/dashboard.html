@@ -1,0 +1,108 @@
+{% extends "shared/base.html" %}
+{% block title %}Parent Dashboard – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <div class="header-inner">
+    <h1>🏫 Parent Dashboard</h1>
+    <p class="subtitle">Manage your children's learning journey</p>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="card-grid three-col">
+  <div class="stat-card">
+    <div class="stat-icon">👦</div>
+    <div class="stat-number">{{ students|length }}</div>
+    <div class="stat-label">Students</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">📚</div>
+    <div class="stat-number">{{ subjects|length }}</div>
+    <div class="stat-label">Subjects</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">❓</div>
+    <div class="stat-number">{{ total_questions }}</div>
+    <div class="stat-label">Questions Generated</div>
+  </div>
+</div>
+
+<!-- Teaching Mode Feature Card -->
+<div class="feature-card teaching-card">
+  <div class="feature-icon">🖥️</div>
+  <div class="feature-body">
+    <h2>Teaching Mode</h2>
+    <p>Open any chapter PDF and teach your child page by page — like a virtual classroom.
+       See all quiz questions beforehand so you know what to focus on.</p>
+  </div>
+  <div class="feature-action">
+    <a href="{{ url_for('parent.subjects') }}" class="btn btn-white">
+      Choose a Chapter to Teach →
+    </a>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="section-title">⚡ Quick Actions</div>
+<div class="card-grid four-col">
+  <a href="{{ url_for('parent.upload') }}" class="action-card">
+    <div class="action-icon">⬆️</div>
+    <div class="action-label">Upload Chapter PDF</div>
+  </a>
+  <a href="{{ url_for('parent.students') }}" class="action-card">
+    <div class="action-icon">👥</div>
+    <div class="action-label">View Students</div>
+  </a>
+  <a href="{{ url_for('parent.add_student') }}" class="action-card">
+    <div class="action-icon">➕</div>
+    <div class="action-label">Add Student</div>
+  </a>
+  <a href="{{ url_for('parent.subjects') }}" class="action-card">
+    <div class="action-icon">📝</div>
+    <div class="action-label">Manage Subjects</div>
+  </a>
+</div>
+
+<!-- Recent Uploads -->
+{% if recent_chapters %}
+<div class="section-title">📂 Recent Chapter Uploads</div>
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Chapter</th>
+        <th>Subject</th>
+        <th>Questions</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for chapter in recent_chapters %}
+      <tr>
+        <td>{{ chapter.title }}</td>
+        <td>{{ chapter.subject.name }} (Gr.{{ chapter.subject.grade }})</td>
+        <td>{{ chapter.questions|length }}</td>
+        <td>
+          {% if chapter.is_processed %}
+          <span class="badge badge-success">Ready</span>
+          {% else %}
+          <span class="badge badge-warning">Pending</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('parent.view_questions', chapter_id=chapter.id) }}"
+             class="btn btn-sm btn-outline">View</a>
+          {% if chapter.pdf_filename %}
+          <a href="{{ url_for('parent.teach', chapter_id=chapter.id) }}"
+             class="btn btn-sm btn-teach ml-1">Teach</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

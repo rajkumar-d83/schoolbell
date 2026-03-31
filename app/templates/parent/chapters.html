@@ -1,0 +1,86 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ subject.name }} Chapters – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>{{ subject.name }}</h1>
+  <p class="subtitle">Grade {{ subject.grade }} &nbsp;|&nbsp; {{ chapters|length }} chapter(s)</p>
+</div>
+
+<div style="display:flex; gap:.75rem; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap;">
+  <a href="{{ url_for('parent.subjects') }}" class="btn btn-outline">← Back to Subjects</a>
+  <a href="{{ url_for('parent.upload') }}" class="btn btn-primary">⬆️ Upload New Chapter</a>
+</div>
+
+{% if chapters %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Chapter Title</th>
+        <th>Questions</th>
+        <th>Status</th>
+        <th>Uploaded</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for chapter in chapters %}
+      <tr>
+        <td class="chapter-num">{{ chapter.chapter_number or '—' }}</td>
+        <td><strong>{{ chapter.title }}</strong></td>
+        <td>
+          {% set qcount = chapter.questions|length %}
+          {% if qcount > 0 %}
+            <span class="badge badge-success">{{ qcount }} Q</span>
+          {% else %}
+            <span class="badge badge-muted">None</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if chapter.is_processed %}
+            <span class="badge badge-success">Ready</span>
+          {% else %}
+            <span class="badge badge-warning">Pending</span>
+          {% endif %}
+        </td>
+        <td style="white-space:nowrap; font-size:.85rem; color:#5f6368;">
+          {{ chapter.uploaded_at.strftime('%d %b %Y') }}
+        </td>
+        <td>
+          <div style="display:flex; gap:.4rem; flex-wrap:wrap;">
+            {% if chapter.is_processed %}
+            <a href="{{ url_for('parent.view_questions', chapter_id=chapter.id) }}"
+               class="btn btn-sm btn-outline">Questions</a>
+            {% else %}
+            <a href="{{ url_for('parent.generate_questions', chapter_id=chapter.id) }}"
+               class="btn btn-sm btn-outline">Generate</a>
+            {% endif %}
+            {% if chapter.pdf_filename %}
+            <a href="{{ url_for('parent.teach', chapter_id=chapter.id) }}"
+               class="btn btn-sm btn-teach">Teach</a>
+            {% endif %}
+            <form method="POST"
+                  action="{{ url_for('parent.delete_chapter', chapter_id=chapter.id) }}"
+                  style="display:inline"
+                  onsubmit="return confirm('Delete chapter &quot;{{ chapter.title }}&quot;? All questions and quiz history for this chapter will be permanently removed.')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">📂</div>
+  <h3>No chapters yet</h3>
+  <p>Upload a PDF to add the first chapter for this subject.</p>
+  <a href="{{ url_for('parent.upload') }}" class="btn btn-primary mt-1">⬆️ Upload Chapter PDF</a>
+</div>
+{% endif %}
+{% endblock %}

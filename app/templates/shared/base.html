@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SchoolBell{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <a class="navbar-brand" href="{{ url_for('main.index') }}">🔔 SchoolBell</a>
+  <div class="navbar-spacer"></div>
+  {% if current_user.is_authenticated %}
+  <div class="navbar-links">
+    {% if current_user.role == 'student' %}
+      <a class="nav-link" href="{{ url_for('student.dashboard') }}">🏠 Home</a>
+      <a class="nav-link" href="{{ url_for('student.subjects') }}">📚 Subjects</a>
+      <a class="nav-link" href="{{ url_for('student.performance') }}">📊 Performance</a>
+    {% else %}
+      <a class="nav-link" href="{{ url_for('parent.dashboard') }}">🏠 Home</a>
+      <a class="nav-link" href="{{ url_for('parent.students') }}">👥 Students</a>
+      <a class="nav-link" href="{{ url_for('parent.subjects') }}">📚 Subjects</a>
+      <a class="nav-link" href="{{ url_for('parent.upload') }}">⬆️ Upload</a>
+    {% endif %}
+    <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
+  </div>
+  {% endif %}
+</nav>
+
+<!-- Flash Messages -->
+<div class="flash-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+</div>
+
+<!-- Main Content -->
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<footer>
+  <p>🔔 SchoolBell &nbsp;|&nbsp; CBSE Learning Portal &nbsp;|&nbsp; Grades 3 &amp; 7</p>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
