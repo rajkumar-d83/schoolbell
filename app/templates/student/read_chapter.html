@@ -1,0 +1,176 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ chapter.title }} – SchoolBell{% endblock %}
+
+{% block extra_head %}
+<style>
+  body { overflow: hidden; }
+  .navbar { position: sticky; top: 0; z-index: 200; }
+  main { padding: 0 !important; }
+
+  .reader-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 56px);
+  }
+
+  .reader-topbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .5rem 1rem;
+    background: var(--student-green, #2e7d32);
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .reader-topbar a { color: #fff; opacity: .85; text-decoration: none; font-size: .9rem; }
+  .reader-topbar a:hover { opacity: 1; }
+  .reader-title { font-weight: 600; font-size: 1rem; margin: 0 auto 0 0; }
+
+  .pdf-canvas-wrap {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    background: #555;
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+  }
+  #pdf-canvas { display: block; box-shadow: 0 2px 12px rgba(0,0,0,.5); }
+  .pdf-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+    color: #fff;
+    padding: 3rem;
+  }
+
+  .pdf-controls {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .4rem .75rem;
+    background: #333;
+    color: #eee;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .pdf-btn {
+    background: #555;
+    color: #eee;
+    border: none;
+    border-radius: 4px;
+    padding: .25rem .65rem;
+    cursor: pointer;
+    font-size: .85rem;
+  }
+  .pdf-btn:hover { background: #777; }
+  .page-indicator { font-size: .85rem; min-width: 90px; text-align: center; }
+  .zoom-label { font-size: .85rem; min-width: 42px; text-align: center; }
+  .pdf-ctrl-sep { width: 1px; height: 18px; background: #666; margin: 0 .25rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reader-layout">
+
+  <!-- Top bar -->
+  <div class="reader-topbar">
+    <a href="{{ url_for('student.chapters', subject_id=subject.id) }}">← Back</a>
+    <span class="reader-title">{{ subject.name }} · {{ chapter.title }}</span>
+  </div>
+
+  <!-- PDF canvas -->
+  <div class="pdf-canvas-wrap" id="canvas-wrap">
+    <div class="pdf-loading" id="pdf-loading">
+      <span>Loading PDF…</span>
+    </div>
+    <canvas id="pdf-canvas" style="display:none;"></canvas>
+  </div>
+
+  <!-- Controls -->
+  <div class="pdf-controls">
+    <button class="pdf-btn" onclick="updatePage(currentPage - 1)">◀ Prev</button>
+    <span class="page-indicator" id="page-indicator">Page — of —</span>
+    <button class="pdf-btn" onclick="updatePage(currentPage + 1)">Next ▶</button>
+    <div class="pdf-ctrl-sep"></div>
+    <button class="pdf-btn" onclick="changeZoom(-0.25)">−</button>
+    <span class="zoom-label" id="zoom-label">150%</span>
+    <button class="pdf-btn" onclick="changeZoom(0.25)">+</button>
+    <div class="pdf-ctrl-sep"></div>
+    <button class="pdf-btn" onclick="toggleFullscreen()">⛶</button>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const PDF_URL = "{{ url_for('parent.serve_pdf', chapter_id=chapter.id) }}";
+
+let pdfDoc      = null;
+let currentPage = 1;
+let numPages    = 0;
+let scale       = 1.5;
+let renderTask  = null;
+
+const canvas    = document.getElementById('pdf-canvas');
+const ctx       = canvas.getContext('2d');
+const indicator = document.getElementById('page-indicator');
+const loading   = document.getElementById('pdf-loading');
+const zoomLabel = document.getElementById('zoom-label');
+
+pdfjsLib.getDocument(PDF_URL).promise
+  .then(doc => {
+    pdfDoc   = doc;
+    numPages = doc.numPages;
+    loading.style.display = 'none';
+    canvas.style.display  = 'block';
+    renderPage(currentPage);
+  })
+  .catch(err => {
+    loading.innerHTML = '<span style="color:#ff6b6b">Failed to load PDF.</span>';
+    console.error(err);
+  });
+
+async function renderPage(n) {
+  if (!pdfDoc) return;
+  if (renderTask) { renderTask.cancel(); }
+  const page     = await pdfDoc.getPage(n);
+  const viewport = page.getViewport({ scale });
+  canvas.width   = viewport.width;
+  canvas.height  = viewport.height;
+  renderTask = page.render({ canvasContext: ctx, viewport });
+  await renderTask.promise;
+  indicator.textContent = `Page ${n} of ${numPages}`;
+  zoomLabel.textContent = Math.round(scale * 100) + '%';
+}
+
+function updatePage(n) {
+  n = Math.max(1, Math.min(numPages || 1, n));
+  if (n === currentPage && pdfDoc) return;
+  currentPage = n;
+  renderPage(currentPage);
+}
+
+function changeZoom(delta) {
+  scale = Math.max(0.5, Math.min(3.0, scale + delta));
+  renderPage(currentPage);
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.querySelector('.reader-layout').requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  updatePage(currentPage - 1);
+  if (e.key === 'ArrowRight') updatePage(currentPage + 1);
+});
+</script>
+{% endblock %}

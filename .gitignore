@@ -25,6 +25,9 @@ uploads/*
 *.db
 *.sqlite3
 
+# Claude Code memory
+.claude/
+
 # IDE
 .vscode/
 .idea/

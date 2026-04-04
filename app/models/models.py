@@ -107,6 +107,8 @@ class QuizSession(db.Model):
     completed_at    = db.Column(db.DateTime, nullable=True)
     is_completed    = db.Column(db.Boolean, default=False)
 
+    question_ids = db.Column(db.Text, nullable=True)   # JSON list of selected question IDs
+
     attempts = db.relationship('QuestionAttempt', backref='session', lazy=True)
 
     def __repr__(self):

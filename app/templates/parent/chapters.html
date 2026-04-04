@@ -27,9 +27,27 @@
     </thead>
     <tbody>
       {% for chapter in chapters %}
-      <tr>
+      <tr id="row-{{ chapter.id }}">
         <td class="chapter-num">{{ chapter.chapter_number or '—' }}</td>
-        <td><strong>{{ chapter.title }}</strong></td>
+        <td>
+          <span class="ch-title-display" id="title-{{ chapter.id }}">
+            <strong>{{ chapter.title }}</strong>
+            <button class="btn-icon" onclick="showRename({{ chapter.id }}, '{{ chapter.title|e }}', '{{ chapter.chapter_number or '' }}')"
+                    title="Rename" style="margin-left:.4rem; opacity:.5; cursor:pointer; background:none; border:none; font-size:.9rem;">✏️</button>
+          </span>
+          <form id="rename-{{ chapter.id }}"
+                method="POST"
+                action="{{ url_for('parent.rename_chapter', chapter_id=chapter.id) }}"
+                style="display:none; gap:.4rem; align-items:center; flex-wrap:wrap;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="number" name="chapter_number" placeholder="#" min="1" max="99"
+                   style="width:3.5rem;" class="form-control form-control-sm">
+            <input type="text" name="title" required
+                   style="flex:1; min-width:160px;" class="form-control form-control-sm">
+            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="hideRename({{ chapter.id }})">Cancel</button>
+          </form>
+        </td>
         <td>
           {% set qcount = chapter.questions|length %}
           {% if qcount > 0 %}
@@ -83,4 +101,19 @@
   <a href="{{ url_for('parent.upload') }}" class="btn btn-primary mt-1">⬆️ Upload Chapter PDF</a>
 </div>
 {% endif %}
+
+<script>
+function showRename(id, title, num) {
+  document.getElementById('title-' + id).style.display = 'none';
+  var form = document.getElementById('rename-' + id);
+  form.style.display = 'flex';
+  form.querySelector('[name=title]').value = title;
+  form.querySelector('[name=chapter_number]').value = num;
+  form.querySelector('[name=title]').focus();
+}
+function hideRename(id) {
+  document.getElementById('title-' + id).style.display = '';
+  document.getElementById('rename-' + id).style.display = 'none';
+}
+</script>
 {% endblock %}

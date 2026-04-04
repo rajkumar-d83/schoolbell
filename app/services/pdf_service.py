@@ -45,13 +45,12 @@ Return ONLY a valid JSON array with no other text. Each object must have these e
 
 Return only the JSON array, nothing else."""
 
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4000,
+        with client.messages.stream(
+            model="claude-sonnet-4-6",
+            max_tokens=24000,
             messages=[{"role": "user", "content": prompt}]
-        )
-
-        response_text = message.content[0].text.strip()
+        ) as stream:
+            response_text = stream.get_final_text().strip()
 
         # Strip markdown code fences if present
         if response_text.startswith('```'):

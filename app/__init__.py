@@ -24,6 +24,18 @@ def create_app(config_name='development'):
     bcrypt.init_app(app)
     csrf.init_app(app)
 
+    # Enable WAL mode for SQLite so readers don't block writers
+    if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
+        from sqlalchemy import event
+        from sqlalchemy.engine import Engine
+        import sqlite3
+
+        @event.listens_for(Engine, 'connect')
+        def set_wal_mode(dbapi_conn, _):
+            if isinstance(dbapi_conn, sqlite3.Connection):
+                dbapi_conn.execute('PRAGMA journal_mode=WAL')
+                dbapi_conn.execute('PRAGMA synchronous=NORMAL')
+
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp
     from app.routes.student import student_bp

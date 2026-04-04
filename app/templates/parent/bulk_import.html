@@ -1,0 +1,78 @@
+{% extends "shared/base.html" %}
+{% block title %}Bulk Import Books – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>📥 Bulk Import NCERT Books</h1>
+  <p class="subtitle">Import all chapters from a structured book directory</p>
+</div>
+
+<div class="form-card">
+
+  <div class="ai-note" style="background:#e8f5e9; border-color:#2e7d32; margin-bottom:1.5rem;">
+    <span class="ai-icon">ℹ️</span>
+    <span>
+      Only <strong>new chapters</strong> (not already in SchoolBell) will be imported.
+      Existing chapters are left untouched. Books stay in the source folder.
+    </span>
+  </div>
+
+  <div style="margin-bottom:1.5rem;">
+    <h3 style="margin:0 0 .5rem;">Expected folder structure</h3>
+    <pre style="background:#f4f4f4; padding:1rem; border-radius:6px; font-size:.85rem; line-height:1.6; overflow-x:auto;">C:\NCERT_BOOKS\
+  Grade_8\
+    Science\
+      chapter01.pdf
+      chapter02.pdf
+    Maths\
+      subfolder\
+        chapter01.pdf</pre>
+    <p style="font-size:.85rem; color:#666; margin:.5rem 0 0;">
+      Grade number is read from the folder name (e.g. <code>Grade_8</code>).
+      Chapter title &amp; number are extracted from the first page of each PDF.
+    </p>
+  </div>
+
+  <form method="POST" action="{{ url_for('parent.bulk_import') }}" id="import-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label class="form-label" for="source_dir">Book Directory Path</label>
+      <input type="text" id="source_dir" name="source_dir"
+             class="form-control"
+             placeholder="C:\NCERT_BOOKS"
+             value="C:\NCERT_BOOKS"
+             autocomplete="off">
+      <div style="font-size:.82rem; color:#888; margin-top:.3rem;">
+        Full path to the folder containing your Grade sub-folders.
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-lg" id="import-btn"
+              onclick="showSpinner()">
+        📥 Import All Books →
+      </button>
+      <a href="{{ url_for('parent.dashboard') }}" class="btn btn-outline ml-1">Cancel</a>
+    </div>
+  </form>
+
+  <div class="spinner-overlay" id="spinner" style="display:none">
+    <div class="spinner-box">
+      <div class="spinner-ring"></div>
+      <div class="spinner-text">Importing books…</div>
+      <div class="spinner-subtext">Reading PDFs and extracting chapter info</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showSpinner() {
+  setTimeout(() => {
+    document.getElementById('spinner').style.display = 'flex';
+    document.getElementById('import-btn').disabled = true;
+  }, 100);
+}
+</script>
+{% endblock %}

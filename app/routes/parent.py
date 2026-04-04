@@ -6,8 +6,9 @@ from app import db
 from app.models.models import (User, Subject, Chapter, Question,
                                 QuizSession, QuestionAttempt, TeachSession)
 from app.services.pdf_service import extract_pdf_text, generate_questions_from_text
+import fitz as _fitz_lib
 from app.services.analytics import get_student_performance
-import os
+import os, re, shutil, uuid
 
 parent_bp = Blueprint('parent', __name__, url_prefix='/parent')
 
@@ -144,6 +145,23 @@ def delete_subject(subject_id):
     return redirect(url_for('parent.subjects'))
 
 
+@parent_bp.route('/chapters/<int:chapter_id>/rename', methods=['POST'])
+@login_required
+@parent_required
+def rename_chapter(chapter_id):
+    chapter = Chapter.query.get_or_404(chapter_id)
+    new_title = request.form.get('title', '').strip()
+    new_number = request.form.get('chapter_number', '').strip()
+    if not new_title:
+        flash('Chapter title cannot be empty.', 'danger')
+    else:
+        chapter.title = new_title[:200]
+        chapter.chapter_number = int(new_number) if new_number.isdigit() else None
+        db.session.commit()
+        flash(f'Chapter renamed to "{chapter.title}".', 'success')
+    return redirect(url_for('parent.subject_chapters', subject_id=chapter.subject_id))
+
+
 @parent_bp.route('/chapters/<int:chapter_id>/delete', methods=['POST'])
 @login_required
 @parent_required
@@ -166,16 +184,17 @@ def _delete_chapter_cascade(chapter):
             os.remove(filepath)
         except OSError:
             pass
-    # Delete in dependency order
-    session_ids = [s.id for s in chapter.quiz_sessions]
-    if session_ids:
-        QuestionAttempt.query.filter(
-            QuestionAttempt.session_id.in_(session_ids)
-        ).delete(synchronize_session=False)
-    QuizSession.query.filter_by(chapter_id=chapter.id).delete(synchronize_session=False)
-    TeachSession.query.filter_by(chapter_id=chapter.id).delete(synchronize_session=False)
-    Question.query.filter_by(chapter_id=chapter.id).delete(synchronize_session=False)
-    db.session.delete(chapter)
+    # Delete in dependency order using raw SQL to avoid ORM cache staleness
+    db.session.execute(
+        db.text('DELETE FROM question_attempts WHERE session_id IN '
+                '(SELECT id FROM quiz_sessions WHERE chapter_id = :cid)'),
+        {'cid': chapter.id}
+    )
+    db.session.execute(db.text('DELETE FROM quiz_sessions WHERE chapter_id = :cid'), {'cid': chapter.id})
+    db.session.execute(db.text('DELETE FROM teach_sessions WHERE chapter_id = :cid'), {'cid': chapter.id})
+    db.session.execute(db.text('DELETE FROM questions WHERE chapter_id = :cid'), {'cid': chapter.id})
+    db.session.execute(db.text('DELETE FROM chapters WHERE id = :cid'), {'cid': chapter.id})
+    db.session.expire_all()
 
 
 # ── Upload PDF ─────────────────────────────────────────────────────────────────
@@ -233,8 +252,8 @@ def generate_questions(chapter_id):
     chapter = Chapter.query.get_or_404(chapter_id)
 
     if request.method == 'POST':
-        num_questions = request.form.get('num_questions', 10, type=int)
-        num_questions = max(5, min(20, num_questions))
+        num_questions = request.form.get('num_questions', 100, type=int)
+        num_questions = max(10, min(100, num_questions))
 
         if not chapter.pdf_text:
             flash('No PDF text found. Please re-upload the PDF.', 'danger')
@@ -243,8 +262,14 @@ def generate_questions(chapter_id):
         questions = generate_questions_from_text(chapter.pdf_text, num_questions,
                                                  chapter.title)
         if questions:
-            # Remove old questions first
-            Question.query.filter_by(chapter_id=chapter_id).delete()
+            # Delete attempts referencing old questions, then the questions
+            db.session.execute(
+                db.text('DELETE FROM question_attempts WHERE question_id IN '
+                        '(SELECT id FROM questions WHERE chapter_id = :cid)'),
+                {'cid': chapter_id}
+            )
+            db.session.execute(db.text('DELETE FROM questions WHERE chapter_id = :cid'), {'cid': chapter_id})
+            db.session.expire_all()
             for q in questions:
                 db.session.add(Question(
                     chapter_id=chapter_id,
@@ -328,3 +353,206 @@ def serve_pdf(chapter_id):
         return 'PDF not found', 404
     upload_folder = current_app.config['UPLOAD_FOLDER']
     return send_from_directory(upload_folder, chapter.pdf_filename)
+
+
+# ── Bulk Import from directory ─────────────────────────────────────────────────
+_META   = re.compile(r'Textbook|Curiosity|Grade|Reprint', re.IGNORECASE)
+_STOP   = re.compile(r'probe and ponder|reprint|share your question', re.IGNORECASE)
+_BULLET = re.compile(r'^[z•]\s|^\d+\.\s')
+
+def _is_title_line(l):
+    return (not _META.search(l) and not _STOP.search(l)
+            and not _BULLET.match(l) and 3 < len(l) < 110)
+
+
+def _parse_chapter_info(page_text):
+    """Extract (chapter_number, chapter_title) from a page's text."""
+    lines = [l.strip() for l in page_text.splitlines() if l.strip()]
+
+    # P1: "Chapter N — Title" on one line
+    for line in lines:
+        m = re.match(r'Chapter\s+(\d+)\s*[—–\-]+\s*(.+)', line, re.IGNORECASE)
+        if m:
+            return int(m.group(1)), m.group(2).strip()
+
+    # P2: "N – Title" on one line  (Social Science style)
+    for line in lines:
+        m = re.match(r'^(\d{1,2})\s*[–—]\s*(.+)', line)
+        if m:
+            num, title = int(m.group(1)), m.group(2).strip()
+            if len(title) > 4:
+                return num, title
+
+    # P3: "CHAPTER\n<num>" block — title is immediately before CHAPTER keyword
+    for i, line in enumerate(lines):
+        if line.upper() == 'CHAPTER' and i + 1 < len(lines):
+            m = re.match(r'^(\d{1,2})$', lines[i + 1])
+            if m:
+                num = int(m.group(1))
+                before = [l for l in lines[max(0, i - 4):i] if _is_title_line(l)]
+                if before:
+                    return num, ' '.join(before[-3:]).strip()
+
+    # P3b: "Title words N" — chapter number appended at end of title line
+    for i, line in enumerate(lines):
+        if _META.search(line):
+            continue
+        m = re.match(r'^(.+?)\s+(\d{1,2})\s*$', line)
+        if m:
+            title_part, num = m.group(1).strip(), int(m.group(2))
+            if num == 0 or len(title_part) < 5:
+                continue
+            # absorb preceding title line if present
+            if i > 0 and _is_title_line(lines[i - 1]):
+                title_part = lines[i - 1] + ' ' + title_part
+            return num, title_part
+
+    # P4: standalone chapter number 1–20 with surrounding title lines
+    for i, line in enumerate(lines):
+        if not re.match(r'^(\d{1,2})$', line):
+            continue
+        num = int(line)
+        if num == 0 or num > 20:       # exclude page numbers
+            continue
+
+        before_parts = []
+        for j in range(i - 1, max(-1, i - 6), -1):
+            candidate = lines[j]
+            if re.match(r'^\d{2,}$', candidate):
+                break
+            if _META.search(candidate) or _STOP.search(candidate):
+                break
+            if not _is_title_line(candidate):
+                break
+            before_parts.insert(0, candidate)
+
+        after_parts = []
+        for j in range(i + 1, min(i + 5, len(lines))):
+            candidate = lines[j]
+            if re.match(r'^\d+$', candidate):
+                break
+            if _STOP.search(candidate) or _BULLET.match(candidate):
+                break
+            if not _is_title_line(candidate):
+                break
+            after_parts.append(candidate)
+
+        if before_parts:
+            title = ' '.join(before_parts + after_parts[:1]).strip()
+        else:
+            title = ' '.join(after_parts[:3]).strip()
+
+        if len(title) > 4:
+            return num, title
+
+    return None, None
+
+
+def _normalize_subject(folder_name):
+    """Convert folder name like 'Social_science' → 'Social Science'."""
+    return folder_name.replace('_', ' ').title()
+
+
+def _collect_pdfs(subject_dir):
+    """Return all PDF paths under subject_dir (handles one level of subfolders)."""
+    pdfs = []
+    for entry in os.scandir(subject_dir):
+        if entry.is_file() and entry.name.lower().endswith('.pdf'):
+            pdfs.append(entry.path)
+        elif entry.is_dir():
+            for sub in os.scandir(entry.path):
+                if sub.is_file() and sub.name.lower().endswith('.pdf'):
+                    pdfs.append(sub.path)
+    return sorted(pdfs)
+
+
+@parent_bp.route('/bulk-import', methods=['GET', 'POST'])
+@login_required
+@parent_required
+def bulk_import():
+    if request.method == 'POST':
+        source_dir = request.form.get('source_dir', '').strip()
+
+        if not source_dir or not os.path.isdir(source_dir):
+            flash('Directory not found. Check the path and try again.', 'danger')
+            return redirect(url_for('parent.bulk_import'))
+
+        upload_folder = current_app.config['UPLOAD_FOLDER']
+
+        imported, skipped = 0, []
+
+        # ── Scan Grade_N folders ───────────────────────────────────────────────
+        for grade_entry in sorted(os.scandir(source_dir), key=lambda e: e.name):
+            if not grade_entry.is_dir():
+                continue
+            grade_match = re.match(r'Grade[_\s]?(\d+)', grade_entry.name, re.IGNORECASE)
+            if not grade_match:
+                continue
+            grade = int(grade_match.group(1))
+
+            for subj_entry in sorted(os.scandir(grade_entry.path), key=lambda e: e.name):
+                if not subj_entry.is_dir():
+                    continue
+
+                subject_name = _normalize_subject(subj_entry.name)
+                subject = Subject.query.filter_by(name=subject_name, grade=grade).first()
+                if not subject:
+                    subject = Subject(name=subject_name, grade=grade)
+                    db.session.add(subject)
+                    db.session.flush()
+
+                pdfs = _collect_pdfs(subj_entry.path)
+                for pdf_path in pdfs:
+                    try:
+                        _doc = _fitz_lib.open(pdf_path)
+                        # Extract chapter info from first 2 pages
+                        chapter_num, chapter_title = None, None
+                        for _pg in range(min(2, len(_doc))):
+                            chapter_num, chapter_title = _parse_chapter_info(_doc[_pg].get_text())
+                            if chapter_title:
+                                break
+                        # Extract full text from all pages in one pass
+                        full_text = ''.join(page.get_text() + '\f' for page in _doc).strip()
+                        _doc.close()
+
+                        if not chapter_title:
+                            # Fallback: use filename (likely prelims/glossary, skip)
+                            skipped.append(os.path.basename(pdf_path) + ' (no chapter info found)')
+                            continue
+
+                        chapter_title = chapter_title[:200]
+
+                        # Skip if a chapter with the same title already exists in this subject
+                        exists = Chapter.query.filter_by(
+                            subject_id=subject.id, title=chapter_title
+                        ).first()
+                        if exists:
+                            continue
+
+                        # Copy PDF to uploads
+                        dest_name = f"{uuid.uuid4().hex}.pdf"
+                        shutil.copy2(pdf_path, os.path.join(upload_folder, dest_name))
+
+                        db.session.add(Chapter(
+                            subject_id=subject.id,
+                            title=chapter_title,
+                            chapter_number=chapter_num,
+                            pdf_filename=dest_name,
+                            pdf_text=full_text,
+                            uploaded_by=current_user.id
+                        ))
+                        imported += 1
+                    except Exception as e:
+                        skipped.append(f"{os.path.basename(pdf_path)}: {e}")
+
+        db.session.commit()
+
+        if imported:
+            flash(f'{imported} new chapter(s) imported.', 'success')
+        else:
+            flash('No new chapters found — everything is already up to date.', 'info')
+        if skipped:
+            flash(f'Skipped {len(skipped)} file(s): ' + '; '.join(skipped[:5]), 'warning')
+        return redirect(url_for('parent.subjects'))
+
+    return render_template('parent/bulk_import.html')

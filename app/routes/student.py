@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from functools import wraps
 from datetime import datetime
+import json, random
 from app import db
 from app.models.models import Subject, Chapter, Question, QuizSession, QuestionAttempt
 from app.services.analytics import get_student_performance
@@ -46,21 +47,49 @@ def chapters(subject_id):
     return render_template('student/chapters.html', subject=subject, chapters=chapters)
 
 
+QUIZ_SIZE = 10   # questions per quiz attempt
+
 @student_bp.route('/quiz/start/<int:chapter_id>')
 @login_required
 def start_quiz(chapter_id):
     chapter = Chapter.query.get_or_404(chapter_id)
-    questions = Question.query.filter_by(chapter_id=chapter_id).all()
+    all_questions = Question.query.filter_by(chapter_id=chapter_id).all()
 
-    if not questions:
+    if not all_questions:
         flash('No questions available for this chapter yet.', 'warning')
         return redirect(url_for('student.subjects'))
 
-    # Create a new quiz session
+    # IDs the student already got right in completed sessions for this chapter
+    prev_correct_ids = {
+        row[0] for row in
+        db.session.query(QuestionAttempt.question_id)
+        .join(QuizSession, QuestionAttempt.session_id == QuizSession.id)
+        .filter(
+            QuizSession.student_id == current_user.id,
+            QuizSession.chapter_id == chapter_id,
+            QuizSession.is_completed == True,
+            QuestionAttempt.is_correct == True
+        ).all()
+    }
+
+    # Prefer unseen/wrong questions; pad with correct ones only if needed
+    fresh   = [q for q in all_questions if q.id not in prev_correct_ids]
+    mastered = [q for q in all_questions if q.id in prev_correct_ids]
+
+    if len(fresh) >= QUIZ_SIZE:
+        selected = random.sample(fresh, QUIZ_SIZE)
+    else:
+        pad = random.sample(mastered, min(QUIZ_SIZE - len(fresh), len(mastered)))
+        selected = fresh + pad
+        random.shuffle(selected)
+
+    selected_ids = [q.id for q in selected]
+
     session = QuizSession(
         student_id=current_user.id,
         chapter_id=chapter_id,
-        total_questions=len(questions)
+        total_questions=len(selected_ids),
+        question_ids=json.dumps(selected_ids)
     )
     db.session.add(session)
     db.session.commit()
@@ -74,18 +103,18 @@ def start_quiz(chapter_id):
 def quiz(session_id, question_index):
     quiz_session = QuizSession.query.get_or_404(session_id)
     chapter = Chapter.query.get(quiz_session.chapter_id)
-    questions = Question.query.filter_by(chapter_id=quiz_session.chapter_id).all()
+    question_ids = json.loads(quiz_session.question_ids)
 
-    if question_index >= len(questions):
+    if question_index >= len(question_ids):
         return redirect(url_for('student.complete_quiz', session_id=session_id))
 
-    question = questions[question_index]
+    question = Question.query.get(question_ids[question_index])
     return render_template('student/quiz.html',
                            quiz_session=quiz_session,
                            chapter=chapter,
                            question=question,
                            question_index=question_index,
-                           total_questions=len(questions),
+                           total_questions=len(question_ids),
                            session_id=session_id)
 
 
@@ -118,9 +147,9 @@ def submit_answer():
     db.session.commit()
 
     next_index = question_index + 1
-    questions = Question.query.filter_by(chapter_id=quiz_session.chapter_id).all()
+    question_ids = json.loads(quiz_session.question_ids)
 
-    if next_index >= len(questions):
+    if next_index >= len(question_ids):
         return redirect(url_for('student.complete_quiz', session_id=session_id))
 
     return redirect(url_for('student.quiz',
@@ -144,6 +173,18 @@ def complete_quiz(session_id):
     attempts = QuestionAttempt.query.filter_by(session_id=session_id).all()
     return render_template('student/quiz_complete.html',
                            quiz_session=quiz_session, attempts=attempts)
+
+
+@student_bp.route('/chapters/<int:chapter_id>/read')
+@login_required
+@student_required
+def read_chapter(chapter_id):
+    chapter = Chapter.query.get_or_404(chapter_id)
+    subject = Subject.query.get_or_404(chapter.subject_id)
+    if not chapter.pdf_filename:
+        flash('No PDF available for this chapter.', 'warning')
+        return redirect(url_for('student.chapters', subject_id=subject.id))
+    return render_template('student/read_chapter.html', chapter=chapter, subject=subject)
 
 
 @student_bp.route('/performance')

@@ -35,7 +35,11 @@
             <span class="badge badge-muted">No questions</span>
           {% endif %}
         </td>
-        <td>
+        <td style="display:flex; gap:.5rem; flex-wrap:wrap;">
+          {% if chapter.pdf_filename %}
+          <a href="{{ url_for('student.read_chapter', chapter_id=chapter.id) }}"
+             class="btn btn-outline btn-sm">📖 Read</a>
+          {% endif %}
           {% if chapter.is_processed %}
           <a href="{{ url_for('student.start_quiz', chapter_id=chapter.id) }}"
              class="btn btn-primary btn-sm">Start Quiz →</a>
