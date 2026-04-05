@@ -21,6 +21,10 @@ env/
 uploads/*
 !uploads/.gitkeep
 
+# NCERT book staging area — keep folder, ignore PDFs
+ncert_books/**/*.pdf
+ncert_books/*.pdf
+
 # Database
 *.db
 *.sqlite3

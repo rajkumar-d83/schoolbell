@@ -86,6 +86,48 @@ def add_student():
     return render_template('parent/add_student.html')
 
 
+@parent_bp.route('/students/<int:student_id>/edit', methods=['GET', 'POST'])
+@login_required
+@parent_required
+def edit_student(student_id):
+    from app import bcrypt
+    student = User.query.get_or_404(student_id)
+
+    if request.method == 'POST':
+        name     = request.form.get('name', '').strip()
+        username = request.form.get('username', '').strip()
+        email    = request.form.get('email', '').strip()
+        grade    = request.form.get('grade', type=int)
+        password = request.form.get('password', '').strip()
+
+        if not all([name, username, email, grade]):
+            flash('Name, username, email and grade are required.', 'danger')
+            return redirect(url_for('parent.edit_student', student_id=student_id))
+
+        conflict = User.query.filter(User.username == username, User.id != student_id).first()
+        if conflict:
+            flash('Username already taken by another account.', 'danger')
+            return redirect(url_for('parent.edit_student', student_id=student_id))
+
+        email_conflict = User.query.filter(User.email == email, User.id != student_id).first()
+        if email_conflict:
+            flash('Email already in use by another account.', 'danger')
+            return redirect(url_for('parent.edit_student', student_id=student_id))
+
+        student.name     = name
+        student.username = username
+        student.email    = email
+        student.grade    = grade
+        if password:
+            student.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+
+        db.session.commit()
+        flash(f'Student "{name}" updated successfully.', 'success')
+        return redirect(url_for('parent.students'))
+
+    return render_template('parent/edit_student.html', student=student)
+
+
 @parent_bp.route('/students/<int:student_id>/report')
 @login_required
 @parent_required
@@ -470,10 +512,12 @@ def _collect_pdfs(subject_dir):
 @login_required
 @parent_required
 def bulk_import():
-    if request.method == 'POST':
-        source_dir = request.form.get('source_dir', '').strip()
+    ncert_folder = current_app.config['NCERT_BOOKS_FOLDER']
 
-        if not source_dir or not os.path.isdir(source_dir):
+    if request.method == 'POST':
+        source_dir = request.form.get('source_dir', '').strip() or ncert_folder
+
+        if not os.path.isdir(source_dir):
             flash('Directory not found. Check the path and try again.', 'danger')
             return redirect(url_for('parent.bulk_import'))
 
@@ -555,4 +599,4 @@ def bulk_import():
             flash(f'Skipped {len(skipped)} file(s): ' + '; '.join(skipped[:5]), 'warning')
         return redirect(url_for('parent.subjects'))
 
-    return render_template('parent/bulk_import.html')
+    return render_template('parent/bulk_import.html', ncert_folder=ncert_folder)

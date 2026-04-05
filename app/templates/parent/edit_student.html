@@ -1,0 +1,55 @@
+{% extends "shared/base.html" %}
+{% block title %}Edit {{ student.name }} – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>✏️ Edit Student</h1>
+  <p class="subtitle">{{ student.name }}</p>
+</div>
+
+<div class="form-card">
+  <form method="POST" action="{{ url_for('parent.edit_student', student_id=student.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label class="form-label">Full Name</label>
+      <input type="text" name="name" class="form-control"
+             value="{{ student.name }}" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" name="username" class="form-control"
+             value="{{ student.username }}" required>
+      <small class="form-hint">Student uses this to log in.</small>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" name="email" class="form-control"
+             value="{{ student.email }}" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Grade</label>
+      <select name="grade" class="form-control" required>
+        {% for g in range(1, 11) %}
+        <option value="{{ g }}" {% if student.grade == g %}selected{% endif %}>Grade {{ g }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">New Password</label>
+      <input type="password" name="password" class="form-control"
+             placeholder="Leave blank to keep current password">
+      <small class="form-hint">Only fill this in if you want to change the password.</small>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+      <a href="{{ url_for('parent.students') }}" class="btn btn-outline ml-1">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

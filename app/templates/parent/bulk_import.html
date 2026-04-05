@@ -18,15 +18,17 @@
   </div>
 
   <div style="margin-bottom:1.5rem;">
-    <h3 style="margin:0 0 .5rem;">Expected folder structure</h3>
-    <pre style="background:#f4f4f4; padding:1rem; border-radius:6px; font-size:.85rem; line-height:1.6; overflow-x:auto;">C:\NCERT_BOOKS\
-  Grade_8\
-    Science\
+    <h3 style="margin:0 0 .5rem;">How to add books</h3>
+    <p style="font-size:.9rem; color:#444; margin:.25rem 0 .75rem;">
+      Drop your grade folders into the project's <code>ncert_books/</code> folder:
+    </p>
+    <pre style="background:#f4f4f4; padding:1rem; border-radius:6px; font-size:.85rem; line-height:1.6; overflow-x:auto;">ncert_books/          ← inside the SchoolBell project
+  Grade_8/
+    Science/
       chapter01.pdf
       chapter02.pdf
-    Maths\
-      subfolder\
-        chapter01.pdf</pre>
+    Maths/
+      chapter01.pdf</pre>
     <p style="font-size:.85rem; color:#666; margin:.5rem 0 0;">
       Grade number is read from the folder name (e.g. <code>Grade_8</code>).
       Chapter title &amp; number are extracted from the first page of each PDF.
@@ -40,11 +42,15 @@
       <label class="form-label" for="source_dir">Book Directory Path</label>
       <input type="text" id="source_dir" name="source_dir"
              class="form-control"
-             placeholder="C:\NCERT_BOOKS"
-             value="C:\NCERT_BOOKS"
+             value="{{ ncert_folder }}"
+             placeholder="e.g. C:\MyBooks or /home/user/books"
              autocomplete="off">
-      <div style="font-size:.82rem; color:#888; margin-top:.3rem;">
-        Full path to the folder containing your Grade sub-folders.
+      <div style="font-size:.82rem; color:#888; margin-top:.3rem; display:flex; gap:1rem; align-items:center;">
+        <span>Type any folder path, or
+          <a href="#" onclick="document.getElementById('source_dir').value='{{ ncert_folder }}'; return false;">
+            reset to project default
+          </a>.
+        </span>
       </div>
     </div>
 

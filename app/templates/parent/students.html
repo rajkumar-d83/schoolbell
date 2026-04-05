@@ -39,9 +39,11 @@
           </span>
           {% else %}—{% endif %}
         </td>
-        <td>
+        <td style="display:flex; gap:.4rem; flex-wrap:wrap;">
           <a href="{{ url_for('parent.student_report', student_id=student.id) }}"
-             class="btn btn-sm btn-outline">View Report</a>
+             class="btn btn-sm btn-outline">Report</a>
+          <a href="{{ url_for('parent.edit_student', student_id=student.id) }}"
+             class="btn btn-sm btn-primary">Edit</a>
         </td>
       </tr>
       {% endfor %}
