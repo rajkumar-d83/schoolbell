@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from functools import wraps
 from datetime import datetime
@@ -47,7 +47,7 @@ def chapters(subject_id):
     return render_template('student/chapters.html', subject=subject, chapters=chapters)
 
 
-QUIZ_SIZE = 10   # questions per quiz attempt
+QUIZ_SIZE = 5   # questions per quiz attempt
 
 @student_bp.route('/quiz/start/<int:chapter_id>')
 @login_required
@@ -146,14 +146,29 @@ def submit_answer():
 
     db.session.commit()
 
-    next_index = question_index + 1
+    next_index   = question_index + 1
     question_ids = json.loads(quiz_session.question_ids)
+    is_last      = next_index >= len(question_ids)
 
-    if next_index >= len(question_ids):
-        return redirect(url_for('student.complete_quiz', session_id=session_id))
+    next_url = (url_for('student.complete_quiz', session_id=session_id)
+                if is_last
+                else url_for('student.quiz', session_id=session_id, question_index=next_index))
 
-    return redirect(url_for('student.quiz',
-                            session_id=session_id, question_index=next_index))
+    # AJAX response for the new instant-feedback quiz UI
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        correct_text = getattr(question, 'option_' + question.correct_answer.lower(), '')
+        return jsonify({
+            'is_correct':     is_correct,
+            'correct_answer': question.correct_answer,
+            'correct_text':   correct_text,
+            'chosen_answer':  chosen_answer,
+            'explanation':    question.explanation or '',
+            'next_url':       next_url,
+            'is_last':        is_last,
+        })
+
+    # Fallback for non-AJAX
+    return redirect(next_url)
 
 
 @student_bp.route('/quiz/<int:session_id>/complete')

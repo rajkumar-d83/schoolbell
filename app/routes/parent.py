@@ -77,7 +77,8 @@ def add_student():
 
         pw_hash = bcrypt.generate_password_hash(password).decode('utf-8')
         new_student = User(name=name, username=username, email=email,
-                           password_hash=pw_hash, role='student', grade=grade)
+                           password_hash=pw_hash, role='student', grade=grade,
+                           display_password=password)
         db.session.add(new_student)
         db.session.commit()
         flash(f'Student {name} added successfully!', 'success')
@@ -304,15 +305,15 @@ def generate_questions(chapter_id):
         questions = generate_questions_from_text(chapter.pdf_text, num_questions,
                                                  chapter.title)
         if questions:
-            # Delete attempts referencing old questions, then the questions
-            db.session.execute(
-                db.text('DELETE FROM question_attempts WHERE question_id IN '
-                        '(SELECT id FROM questions WHERE chapter_id = :cid)'),
-                {'cid': chapter_id}
-            )
-            db.session.execute(db.text('DELETE FROM questions WHERE chapter_id = :cid'), {'cid': chapter_id})
-            db.session.expire_all()
+            # Deduplicate against existing questions by question text
+            existing_texts = {
+                q.question_text.strip().lower()
+                for q in Question.query.filter_by(chapter_id=chapter_id).all()
+            }
+            added = 0
             for q in questions:
+                if q['question_text'].strip().lower() in existing_texts:
+                    continue
                 db.session.add(Question(
                     chapter_id=chapter_id,
                     question_text=q['question_text'],
@@ -325,9 +326,11 @@ def generate_questions(chapter_id):
                     difficulty=q.get('difficulty', 'medium'),
                     topic_tag=q.get('topic_tag', '')
                 ))
+                added += 1
             chapter.is_processed = True
             db.session.commit()
-            flash(f'{len(questions)} questions generated successfully!', 'success')
+            total = Question.query.filter_by(chapter_id=chapter_id).count()
+            flash(f'{added} new questions added. Total in bank: {total}.', 'success')
             return redirect(url_for('parent.view_questions', chapter_id=chapter_id))
         else:
             flash('Question generation failed. Check your API key and try again.', 'danger')

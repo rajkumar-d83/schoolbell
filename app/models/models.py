@@ -10,10 +10,12 @@ class User(db.Model):
     username      = db.Column(db.String(50), nullable=False, unique=True)
     email         = db.Column(db.String(150), nullable=False, unique=True)
     password_hash = db.Column(db.String(200), nullable=False)
-    role          = db.Column(db.String(20), nullable=False)   # 'student' | 'parent'
-    grade         = db.Column(db.Integer, nullable=True)       # 3 or 7 for students
-    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
-    is_active     = db.Column(db.Boolean, default=True)
+    role             = db.Column(db.String(20), nullable=False)   # 'student' | 'parent'
+    grade            = db.Column(db.Integer, nullable=True)
+    created_at       = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active        = db.Column(db.Boolean, default=True)
+    is_claimed       = db.Column(db.Boolean, default=False)   # student picked this account
+    display_password = db.Column(db.String(100), nullable=True)  # plain-text shown on login picker
 
     # Relationships
     quiz_sessions   = db.relationship('QuizSession', foreign_keys='QuizSession.student_id', backref='student', lazy=True)

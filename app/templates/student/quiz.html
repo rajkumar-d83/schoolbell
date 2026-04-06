@@ -4,10 +4,17 @@
 {% block content %}
 <!-- Progress Bar -->
 <div class="quiz-progress-wrap">
-  <div class="quiz-progress-bar" style="width: {{ ((question_index) / total_questions * 100)|int }}%"></div>
+  <div class="quiz-progress-bar"
+       style="width: {{ ((question_index) / total_questions * 100)|int }}%"></div>
 </div>
 
-<div class="quiz-container">
+<!-- Star burst overlay (fires on correct answer) -->
+<div id="star-burst" class="star-burst" aria-hidden="true">
+  🌟🎉⭐🏆✨🎊⭐🌟
+</div>
+
+<div class="quiz-container" id="quiz-container">
+
   <!-- Header -->
   <div class="quiz-header">
     <span class="quiz-chapter-name">{{ chapter.title }}</span>
@@ -16,47 +23,67 @@
   </div>
 
   <!-- Question -->
-  <div class="question-text">
-    {{ question.question_text }}
-  </div>
+  <div class="question-text">{{ question.question_text }}</div>
+
+  <!-- Hidden data -->
+  <input type="hidden" id="csrf-token"      value="{{ csrf_token() }}">
+  <input type="hidden" id="session-id"      value="{{ session_id }}">
+  <input type="hidden" id="question-id"     value="{{ question.id }}">
+  <input type="hidden" id="question-index"  value="{{ question_index }}">
 
   <!-- Options -->
-  <form method="POST" action="{{ url_for('student.submit_answer') }}" id="quiz-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="session_id" value="{{ session_id }}">
-    <input type="hidden" name="question_id" value="{{ question.id }}">
-    <input type="hidden" name="question_index" value="{{ question_index }}">
-    <input type="hidden" name="chosen_answer" id="chosen-answer" value="">
-    <input type="hidden" name="time_taken" id="time-taken" value="60">
+  <div class="options-grid" id="options-grid">
+    {% for label, text in [('A', question.option_a), ('B', question.option_b),
+                            ('C', question.option_c), ('D', question.option_d)] %}
+    <button type="button" class="option-btn" data-value="{{ label }}"
+            onclick="selectOption(this)">
+      <span class="option-label">{{ label }}</span>
+      <span class="option-text">{{ text }}</span>
+    </button>
+    {% endfor %}
+  </div>
 
-    <div class="options-grid">
-      {% for label, text in [('A', question.option_a), ('B', question.option_b),
-                              ('C', question.option_c), ('D', question.option_d)] %}
-      <button type="button"
-              class="option-btn"
-              data-value="{{ label }}"
-              onclick="selectOption(this)">
-        <span class="option-label">{{ label }}</span>
-        <span class="option-text">{{ text }}</span>
-      </button>
-      {% endfor %}
+  <!-- Submit -->
+  <div class="quiz-actions" id="submit-area">
+    <button class="btn btn-primary btn-lg w-full" id="submit-btn"
+            onclick="submitAnswer()" disabled>
+      Check Answer ✓
+    </button>
+  </div>
+
+  <!-- Feedback panel — shown after answering -->
+  <div id="feedback-panel" class="feedback-panel" style="display:none;">
+    <div class="feedback-top">
+      <span id="feedback-icon" class="feedback-big-icon"></span>
+      <div id="feedback-title" class="feedback-title"></div>
     </div>
 
-    <div class="quiz-actions">
-      <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
-        Submit Answer →
-      </button>
+    <!-- Bouncing celebration stars (correct only) -->
+    <div id="celebration" class="celebration-wrap" style="display:none;" aria-hidden="true">
+      <span>⭐</span><span>🌟</span><span>✨</span><span>🎉</span><span>⭐</span>
     </div>
-  </form>
+
+    <!-- Explanation always shown -->
+    <div id="feedback-explanation" class="feedback-explanation"></div>
+
+    <!-- Next button -->
+    <div style="text-align:center; margin-top:1.25rem;">
+      <a id="next-btn" href="#" class="btn btn-primary btn-lg">Next Question →</a>
+    </div>
+  </div>
+
 </div>
 
 <script>
-const TOTAL_TIME = 60;
-let timeLeft = TOTAL_TIME;
+let selectedAnswer = null;
+let answered       = false;
+const TOTAL_TIME   = 60;
+let timeLeft       = TOTAL_TIME;
 let timerInterval;
-const timerEl = document.getElementById('quiz-timer');
-const timeInput = document.getElementById('time-taken');
+const timerEl      = document.getElementById('quiz-timer');
+const startTime    = Date.now();
 
+/* ── Timer ───────────────────────────────────────────────── */
 function startTimer() {
   timerInterval = setInterval(() => {
     timeLeft--;
@@ -64,22 +91,114 @@ function startTimer() {
     if (timeLeft <= 10) timerEl.classList.add('timer-danger');
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
-      timeInput.value = TOTAL_TIME;
-      document.getElementById('quiz-form').submit();
+      submitAnswer();          // auto-submit when time runs out
     }
   }, 1000);
 }
 
+/* ── Option selection ────────────────────────────────────── */
 function selectOption(btn) {
+  if (answered) return;
   document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
-  document.getElementById('chosen-answer').value = btn.dataset.value;
+  selectedAnswer = btn.dataset.value;
+  document.getElementById('submit-btn').disabled = false;
 }
 
-document.getElementById('quiz-form').addEventListener('submit', function() {
+/* ── Submit via AJAX ─────────────────────────────────────── */
+function submitAnswer() {
+  if (answered) return;
+  answered = true;
   clearInterval(timerInterval);
-  timeInput.value = TOTAL_TIME - timeLeft;
-});
+
+  const timeTaken = Math.round((Date.now() - startTime) / 1000);
+  const submitBtn = document.getElementById('submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Checking…';
+
+  const fd = new FormData();
+  fd.append('csrf_token',      document.getElementById('csrf-token').value);
+  fd.append('session_id',      document.getElementById('session-id').value);
+  fd.append('question_id',     document.getElementById('question-id').value);
+  fd.append('question_index',  document.getElementById('question-index').value);
+  fd.append('chosen_answer',   selectedAnswer || '');
+  fd.append('time_taken',      timeTaken);
+
+  fetch('{{ url_for("student.submit_answer") }}', {
+    method:  'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    body:    fd
+  })
+  .then(r => r.json())
+  .then(data => showFeedback(data))
+  .catch(() => { window.location = '{{ url_for("student.subjects") }}'; });
+}
+
+/* ── Show feedback ───────────────────────────────────────── */
+function showFeedback(data) {
+  // Colour the option buttons
+  document.querySelectorAll('.option-btn').forEach(btn => {
+    btn.disabled = true;
+    btn.classList.remove('selected');
+    if (btn.dataset.value === data.correct_answer) {
+      btn.classList.add('option-correct');
+    } else if (btn.dataset.value === data.chosen_answer && !data.is_correct) {
+      btn.classList.add('option-wrong');
+    }
+  });
+
+  // Hide submit, reveal feedback
+  document.getElementById('submit-area').style.display = 'none';
+  const panel = document.getElementById('feedback-panel');
+  panel.style.display = 'block';
+
+  if (data.is_correct) {
+    panel.className = 'feedback-panel feedback-correct';
+    document.getElementById('feedback-icon').textContent  = '🎉';
+    document.getElementById('feedback-title').textContent = pickPraise();
+    document.getElementById('celebration').style.display  = 'flex';
+    fireBurst();
+  } else {
+    panel.className = 'feedback-panel feedback-wrong';
+    document.getElementById('feedback-icon').textContent = '💡';
+    document.getElementById('feedback-title').innerHTML  =
+      'The correct answer is <strong>' + data.correct_answer + '</strong> — don\'t worry, keep going!';
+  }
+
+  // Explanation (always)
+  if (data.explanation) {
+    document.getElementById('feedback-explanation').textContent = data.explanation;
+  }
+
+  // Next / Results button
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.href        = data.next_url;
+  nextBtn.textContent = data.is_last ? '🏁 See My Results!' : 'Next Question →';
+}
+
+/* ── Praise pool ─────────────────────────────────────────── */
+const praises = [
+  '🎉 Brilliant! You got it!',
+  '⭐ Superstar! That\'s correct!',
+  '🏆 Amazing work!',
+  '🌟 Yes! You nailed it!',
+  '🎊 Fantastic! Keep it up!',
+  '🥳 Woohoo! Spot on!'
+];
+function pickPraise() {
+  return praises[Math.floor(Math.random() * praises.length)];
+}
+
+/* ── Burst animation ─────────────────────────────────────── */
+function fireBurst() {
+  const burst = document.getElementById('star-burst');
+  burst.style.display = 'block';
+  burst.classList.add('burst-animate');
+  setTimeout(() => {
+    burst.style.display = 'none';
+    burst.classList.remove('burst-animate');
+  }, 1800);
+}
 
 startTimer();
 </script>

@@ -15,21 +15,27 @@
   <a class="navbar-brand" href="{{ url_for('main.index') }}">🔔 SchoolBell</a>
   <div class="navbar-spacer"></div>
   {% if current_user.is_authenticated %}
-  <div class="navbar-links">
+  <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">&#9776;</button>
+  <div class="navbar-links" id="navbar-links">
     {% if current_user.role == 'student' %}
-      <a class="nav-link" href="{{ url_for('student.dashboard') }}">🏠 Home</a>
-      <a class="nav-link" href="{{ url_for('student.subjects') }}">📚 Subjects</a>
-      <a class="nav-link" href="{{ url_for('student.performance') }}">📊 Performance</a>
+      <a class="nav-link" href="{{ url_for('student.dashboard') }}">🏠 <span>Home</span></a>
+      <a class="nav-link" href="{{ url_for('student.subjects') }}">📚 <span>Subjects</span></a>
+      <a class="nav-link" href="{{ url_for('student.performance') }}">📊 <span>Progress</span></a>
     {% else %}
-      <a class="nav-link" href="{{ url_for('parent.dashboard') }}">🏠 Home</a>
-      <a class="nav-link" href="{{ url_for('parent.students') }}">👥 Students</a>
-      <a class="nav-link" href="{{ url_for('parent.subjects') }}">📚 Subjects</a>
-      <a class="nav-link" href="{{ url_for('parent.upload') }}">⬆️ Upload</a>
+      <a class="nav-link" href="{{ url_for('parent.dashboard') }}">🏠 <span>Home</span></a>
+      <a class="nav-link" href="{{ url_for('parent.students') }}">👥 <span>Students</span></a>
+      <a class="nav-link" href="{{ url_for('parent.subjects') }}">📚 <span>Subjects</span></a>
+      <a class="nav-link" href="{{ url_for('parent.upload') }}">⬆️ <span>Upload</span></a>
     {% endif %}
-    <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
+    <a class="nav-link" href="{{ url_for('auth.logout') }}">🚪 <span>Logout</span></a>
   </div>
   {% endif %}
 </nav>
+<script>
+  var tog = document.getElementById('nav-toggle');
+  var links = document.getElementById('navbar-links');
+  if (tog) tog.addEventListener('click', function() { links.classList.toggle('open'); });
+</script>
 
 <!-- Flash Messages -->
 <div class="flash-container">

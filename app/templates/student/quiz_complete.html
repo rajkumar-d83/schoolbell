@@ -2,34 +2,71 @@
 {% block title %}Quiz Complete – SchoolBell{% endblock %}
 
 {% block content %}
+
+{% set score = quiz_session.score_percent %}
+{% set perfect = score == 100 %}
+{% set great   = score >= 80 %}
+{% set ok      = score >= 60 %}
+
+<!-- Confetti canvas (shown for good scores) -->
+{% if ok %}
+<canvas id="confetti-canvas" style="
+  position:fixed; inset:0; width:100%; height:100%;
+  pointer-events:none; z-index:999;"></canvas>
+{% endif %}
+
 <div class="quiz-complete-wrap">
 
-  <!-- Score Circle -->
+  <!-- Score circle -->
   <div class="score-circle-wrap">
-    <div class="score-circle {% if quiz_session.score_percent >= 70 %}score-great{% elif quiz_session.score_percent >= 40 %}score-ok{% else %}score-poor{% endif %}">
-      <span class="score-percent">{{ '%.0f'|format(quiz_session.score_percent) }}%</span>
+
+    {% if perfect %}
+    <div class="score-circle score-great perfect-glow">
+      <span class="score-percent">100%</span>
     </div>
-    <h2 class="score-message">
-      {% if quiz_session.score_percent >= 80 %}🏆 Excellent work!
-      {% elif quiz_session.score_percent >= 60 %}👍 Well done!
-      {% elif quiz_session.score_percent >= 40 %}📚 Keep practising!
-      {% else %}💪 Don't give up — try again!{% endif %}
-    </h2>
+    <h2 class="score-message">🏆 PERFECT SCORE! You're a genius! 🏆</h2>
+    <div class="celebration-big" aria-hidden="true">
+      <span>🌟</span><span>🎉</span><span>⭐</span><span>🏆</span>
+      <span>✨</span><span>🎊</span><span>⭐</span><span>🌟</span>
+    </div>
+
+    {% elif great %}
+    <div class="score-circle score-great">
+      <span class="score-percent">{{ '%.0f'|format(score) }}%</span>
+    </div>
+    <h2 class="score-message">🥳 Excellent work! You're doing great!</h2>
+    <div class="celebration-big" aria-hidden="true">
+      <span>⭐</span><span>🎉</span><span>🌟</span><span>✨</span><span>⭐</span>
+    </div>
+
+    {% elif ok %}
+    <div class="score-circle score-ok">
+      <span class="score-percent">{{ '%.0f'|format(score) }}%</span>
+    </div>
+    <h2 class="score-message">👍 Good effort! A little more practice and you'll ace it!</h2>
+
+    {% else %}
+    <div class="score-circle score-poor">
+      <span class="score-percent">{{ '%.0f'|format(score) }}%</span>
+    </div>
+    <h2 class="score-message">💪 Don't give up — every attempt makes you smarter!</h2>
+    {% endif %}
+
   </div>
 
-  <!-- Stats Row -->
+  <!-- Stats -->
   <div class="result-stats">
     <div class="result-stat">
       <div class="result-stat-num correct">{{ quiz_session.correct_answers }}</div>
-      <div class="result-stat-label">Correct</div>
+      <div class="result-stat-label">✅ Correct</div>
     </div>
     <div class="result-stat">
       <div class="result-stat-num wrong">{{ quiz_session.total_questions - quiz_session.correct_answers }}</div>
-      <div class="result-stat-label">Wrong</div>
+      <div class="result-stat-label">❌ Wrong</div>
     </div>
     <div class="result-stat">
       <div class="result-stat-num">{{ quiz_session.total_questions }}</div>
-      <div class="result-stat-label">Total</div>
+      <div class="result-stat-label">📝 Total</div>
     </div>
   </div>
 
@@ -40,7 +77,7 @@
     <a href="{{ url_for('student.subjects') }}" class="btn btn-outline ml-1">Back to Subjects</a>
   </div>
 
-  <!-- Question Review -->
+  <!-- Review -->
   <div class="review-section">
     <h3>📋 Question Review</h3>
     {% for attempt in attempts %}
@@ -48,15 +85,17 @@
       <div class="review-q-num">Q{{ loop.index }}</div>
       <div class="review-body">
         <p class="review-question">{{ attempt.question.question_text }}</p>
+
         <div class="review-answers">
           <span class="review-label">Your answer:</span>
           <span class="{% if attempt.is_correct %}answer-correct{% else %}answer-wrong{% endif %}">
             {{ attempt.chosen_answer or 'Skipped' }}
             {% if attempt.chosen_answer %}
-              – {{ attempt.question['option_' + attempt.chosen_answer.lower()] if attempt.chosen_answer else '' }}
+              – {{ attempt.question['option_' + attempt.chosen_answer.lower()] }}
             {% endif %}
           </span>
         </div>
+
         {% if not attempt.is_correct %}
         <div class="review-answers">
           <span class="review-label">Correct answer:</span>
@@ -66,15 +105,64 @@
           </span>
         </div>
         {% endif %}
+
+        <!-- Explanation always shown -->
         {% if attempt.question.explanation %}
         <div class="review-explanation">
           💡 {{ attempt.question.explanation }}
         </div>
         {% endif %}
+
       </div>
     </div>
     {% endfor %}
   </div>
 
 </div>
+
+{% if ok %}
+<script>
+/* ── Lightweight confetti ──────────────────────────────── */
+(function() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const COLORS = ['#2e7d32','#e65100','#1a3a5c','#f57f17','#c62828','#1565c0'];
+  const pieces = Array.from({length: 80}, () => ({
+    x:    Math.random() * canvas.width,
+    y:    Math.random() * -canvas.height,
+    r:    4 + Math.random() * 6,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    speed: 2 + Math.random() * 4,
+    spin:  (Math.random() - .5) * .2,
+    angle: Math.random() * Math.PI * 2,
+    wobble: Math.random() * Math.PI * 2,
+  }));
+
+  let frame = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      p.y      += p.speed;
+      p.angle  += p.spin;
+      p.wobble += .05;
+      p.x      += Math.sin(p.wobble) * 1.5;
+      if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r * 2.5);
+      ctx.restore();
+    });
+    frame++;
+    if (frame < 240) requestAnimationFrame(draw);   // run ~4 seconds then stop
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  draw();
+})();
+</script>
+{% endif %}
 {% endblock %}

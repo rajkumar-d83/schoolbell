@@ -3,6 +3,51 @@
 
 {% block content %}
 <div class="login-wrap">
+
+  <!-- ── Student Picker ──────────────────────────────────────── -->
+  {% if unclaimed %}
+  <div class="login-card" style="margin-bottom:1.5rem;">
+    <div class="login-logo">🎓</div>
+    <div class="login-title" style="font-size:1.1rem;">New Student? Pick your name</div>
+
+    <form method="POST" action="{{ url_for('auth.claim') }}" id="claim-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="form-group">
+        <label class="form-label">Choose your name</label>
+        <select name="student_id" id="student-pick" class="form-control" onchange="showPw(this)" required>
+          <option value="">— Select your name —</option>
+          {% for s in unclaimed %}
+          <option value="{{ s.id }}" data-pw="{{ s.display_password }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div id="pw-box" style="display:none; margin-bottom:1rem;
+           background:#e8f5e9; border:1px solid #2e7d32; border-radius:6px;
+           padding:.6rem .9rem; font-size:.95rem; color:#1b5e20;">
+        Your password is: <strong id="pw-display"></strong>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Select your Grade</label>
+        <select name="grade" class="form-control" required>
+          <option value="">— Select Grade —</option>
+          {% for g in range(1, 11) %}
+          <option value="{{ g }}">Grade {{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-full"
+              style="background:var(--student-green,#2e7d32);">
+        Start Learning →
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- ── Regular Login ───────────────────────────────────────── -->
   <div class="login-card">
     <div class="login-logo">🔔</div>
     <div class="login-title">SchoolBell</div>
@@ -26,5 +71,20 @@
       CBSE Learning Portal
     </p>
   </div>
+
 </div>
+
+<script>
+function showPw(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var pw  = opt.getAttribute('data-pw') || '';
+  var box = document.getElementById('pw-box');
+  if (pw) {
+    document.getElementById('pw-display').textContent = pw;
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+</script>
 {% endblock %}
