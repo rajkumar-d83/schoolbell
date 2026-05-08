@@ -401,101 +401,77 @@ def serve_pdf(chapter_id):
 
 
 # ── Bulk Import from directory ─────────────────────────────────────────────────
-_META   = re.compile(r'Textbook|Curiosity|Grade|Reprint', re.IGNORECASE)
-_STOP   = re.compile(r'probe and ponder|reprint|share your question', re.IGNORECASE)
-_BULLET = re.compile(r'^[z•]\s|^\d+\.\s')
-
-def _is_title_line(l):
-    return (not _META.search(l) and not _STOP.search(l)
-            and not _BULLET.match(l) and 3 < len(l) < 110)
+_SKIP_LINE = re.compile(
+    r'Textbook|Curiosity|Grade|Reprint|ncert|www\.|copyright|not for sale',
+    re.IGNORECASE
+)
 
 
-def _parse_chapter_info(page_text):
-    """Extract (chapter_number, chapter_title) from a page's text."""
+def _extract_title(page_text):
+    """Try a few simple patterns; return a clean title string or None."""
     lines = [l.strip() for l in page_text.splitlines() if l.strip()]
 
-    # P1: "Chapter N — Title" on one line
+    # "Unit N – Title" or "Unit N\n<next clean line>"
+    for i, line in enumerate(lines):
+        m = re.match(r'^Unit\s+\d+\s*[—–\-]?\s*(.*)$', line, re.IGNORECASE)
+        if m:
+            inline = m.group(1).strip().lstrip(':–—-').strip()
+            if len(inline) > 3:
+                return inline
+            # look at next line
+            for j in range(i + 1, min(i + 4, len(lines))):
+                cand = lines[j]
+                if cand and not _SKIP_LINE.search(cand) and 3 < len(cand) < 80:
+                    return cand
+            # look at preceding line (e.g. Poorvi: theme title before "Unit N")
+            for j in range(i - 1, max(-1, i - 4), -1):
+                cand = lines[j]
+                if cand and not _SKIP_LINE.search(cand) and 3 < len(cand) < 80:
+                    return cand
+            break
+
+    # "N  Title" (Santoor style, two or more spaces)
     for line in lines:
-        m = re.match(r'Chapter\s+(\d+)\s*[—–\-]+\s*(.+)', line, re.IGNORECASE)
+        m = re.match(r'^(\d{1,2})\s{2,}(.+)', line)
         if m:
-            return int(m.group(1)), m.group(2).strip()
+            title = m.group(2).strip()
+            if 4 < len(title) < 80:
+                return title
 
-    # P2: "N – Title" on one line  (Social Science style)
-    for line in lines:
-        m = re.match(r'^(\d{1,2})\s*[–—]\s*(.+)', line)
-        if m:
-            num, title = int(m.group(1)), m.group(2).strip()
-            if len(title) > 4:
-                return num, title
+    # Repeated line — styled/bold titles appear multiple times in NCERT PDFs
+    counts: dict = {}
+    for l in lines:
+        counts[l] = counts.get(l, 0) + 1
+    for cand, cnt in sorted(counts.items(), key=lambda x: -x[1]):
+        if cnt >= 2 and 4 < len(cand) <= 60 and not _SKIP_LINE.search(cand):
+            return cand
 
-    # P3: "CHAPTER\n<num>" block — title is immediately before CHAPTER keyword
-    for i, line in enumerate(lines):
-        if line.upper() == 'CHAPTER' and i + 1 < len(lines):
-            m = re.match(r'^(\d{1,2})$', lines[i + 1])
-            if m:
-                num = int(m.group(1))
-                before = [l for l in lines[max(0, i - 4):i] if _is_title_line(l)]
-                if before:
-                    return num, ' '.join(before[-3:]).strip()
-
-    # P3b: "Title words N" — chapter number appended at end of title line
-    for i, line in enumerate(lines):
-        if _META.search(line):
-            continue
-        m = re.match(r'^(.+?)\s+(\d{1,2})\s*$', line)
-        if m:
-            title_part, num = m.group(1).strip(), int(m.group(2))
-            if num == 0 or len(title_part) < 5:
-                continue
-            # absorb preceding title line if present
-            if i > 0 and _is_title_line(lines[i - 1]):
-                title_part = lines[i - 1] + ' ' + title_part
-            return num, title_part
-
-    # P4: standalone chapter number 1–20 with surrounding title lines
-    for i, line in enumerate(lines):
-        if not re.match(r'^(\d{1,2})$', line):
-            continue
-        num = int(line)
-        if num == 0 or num > 20:       # exclude page numbers
-            continue
-
-        before_parts = []
-        for j in range(i - 1, max(-1, i - 6), -1):
-            candidate = lines[j]
-            if re.match(r'^\d{2,}$', candidate):
-                break
-            if _META.search(candidate) or _STOP.search(candidate):
-                break
-            if not _is_title_line(candidate):
-                break
-            before_parts.insert(0, candidate)
-
-        after_parts = []
-        for j in range(i + 1, min(i + 5, len(lines))):
-            candidate = lines[j]
-            if re.match(r'^\d+$', candidate):
-                break
-            if _STOP.search(candidate) or _BULLET.match(candidate):
-                break
-            if not _is_title_line(candidate):
-                break
-            after_parts.append(candidate)
-
-        if before_parts:
-            title = ' '.join(before_parts + after_parts[:1]).strip()
-        else:
-            title = ' '.join(after_parts[:3]).strip()
-
-        if len(title) > 4:
-            return num, title
-
-    return None, None
+    return None
 
 
 def _normalize_subject(folder_name):
-    """Convert folder name like 'Social_science' → 'Social Science'."""
-    return folder_name.replace('_', ' ').title()
+    """Convert folder name to a readable subject name.
+
+    SS_Geography → Geography  |  EVS_Old → EVS (Old)
+    Maths_Part1  → Maths Part 1  |  English_Supplementary → English Supplementary
+    """
+    # SS_ prefix = Social Science sub-subject; drop the prefix
+    if re.match(r'^SS_', folder_name, re.IGNORECASE):
+        folder_name = folder_name[3:]
+
+    KEEP_UPPER = {'EVS'}
+    parts = folder_name.split('_')
+    out = []
+    for p in parts:
+        if p.upper() in KEEP_UPPER:
+            out.append(p.upper())
+        elif p.lower() == 'old':
+            out.append('(Old)')
+        elif re.match(r'^[Pp]art(\d+)$', p):
+            out.append('Part ' + re.match(r'^[Pp]art(\d+)$', p).group(1))
+        else:
+            out.append(p.title())
+    return ' '.join(out).strip()
 
 
 def _collect_pdfs(subject_dir):
@@ -551,21 +527,34 @@ def bulk_import():
                 pdfs = _collect_pdfs(subj_entry.path)
                 for pdf_path in pdfs:
                     try:
-                        _doc = _fitz_lib.open(pdf_path)
-                        # Extract chapter info from first 2 pages
-                        chapter_num, chapter_title = None, None
-                        for _pg in range(min(2, len(_doc))):
-                            chapter_num, chapter_title = _parse_chapter_info(_doc[_pg].get_text())
+                        _doc  = _fitz_lib.open(pdf_path)
+                        _base = os.path.basename(pdf_path)
+
+                        # Chapter number always comes from the filename (most reliable).
+                        # NCERT files: <code><2-digit-chapter>.pdf (e.g. desa101.pdf = ch 01)
+                        chapter_num   = None
+                        chapter_title = None
+                        _fn_m = re.search(r'(\d+)\.pdf$', _base, re.IGNORECASE)
+                        if _fn_m:
+                            _raw = _fn_m.group(1)
+                            # Take last 2 digits to handle code+chapter concatenation
+                            _n = int(_raw[-2:]) if len(_raw) > 2 else int(_raw)
+                            if 1 <= _n <= 50:
+                                chapter_num = _n
+
+                        # Try first 3 pages for a title
+                        for _pg in range(min(3, len(_doc))):
+                            chapter_title = _extract_title(_doc[_pg].get_text())
                             if chapter_title:
                                 break
+
+                        # Always fall back to "Chapter N" — parent can rename later
+                        if not chapter_title:
+                            chapter_title = f'Chapter {chapter_num}' if chapter_num else 'Chapter'
+
                         # Extract full text from all pages in one pass
                         full_text = ''.join(page.get_text() + '\f' for page in _doc).strip()
                         _doc.close()
-
-                        if not chapter_title:
-                            # Fallback: use filename (likely prelims/glossary, skip)
-                            skipped.append(os.path.basename(pdf_path) + ' (no chapter info found)')
-                            continue
 
                         chapter_title = chapter_title[:200]
 
