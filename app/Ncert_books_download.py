@@ -1,7 +1,7 @@
 """
-NCERT English Medium Books Downloader - Grades 6 to 10
+NCERT English Medium Books Downloader - Grades 4 to 10
 =======================================================
-Downloads all available English medium NCERT textbooks (Grades 6-10)
+Downloads all available English medium NCERT textbooks (Grades 4-10)
 from ncert.nic.in as individual chapter PDFs and organises them into:
 
   SchoolBell/ncert_books/
@@ -42,43 +42,60 @@ MAX_RETRIES = 3     # retry attempts per chapter
 
 BOOKS = [
     # ── Grade 4 ───────────────────────────────────────────────────────────────
-    ("Grade_4", "EVS",     "deev1",  12),   # Our Wondrous World
-    ("Grade_4", "Maths",   "demh1",  14),   # Math-Magic
-    ("Grade_4", "English", "deen1",  10),   # Marigold
+    # NEP 2024 new books
+    ("Grade_4", "EVS",              "deev1",  10),  # Our Wondrous World (new NEP)
+    ("Grade_4", "Maths",            "demm1",  12),  # Maths Mela (new NEP)
+    ("Grade_4", "English",          "desa1",   8),  # Santoor (new NEP)
+    # Older books (still used by many schools)
+    ("Grade_4", "EVS_Old",          "deap1",  27),  # Looking Around (old)
 
     # ── Grade 5 ───────────────────────────────────────────────────────────────
-    ("Grade_5", "EVS",     "eeev1",  10),   # EVS
-    ("Grade_5", "Maths",   "eemh1",  14),   # Math-Magic
-    ("Grade_5", "English", "eeen1",  10),   # Marigold
+    # NEP 2024 new books
+    ("Grade_5", "EVS",              "eeev1",  10),  # Our Wondrous World (new NEP)
+    ("Grade_5", "Maths",            "eemm1",  12),  # Maths Mela (new NEP)
+    ("Grade_5", "English",          "eeen1",  10),  # Marigold
+    # Older books (still used by many schools)
+    ("Grade_5", "EVS_Old",          "eeap1",  22),  # Looking Around (old)
+    ("Grade_5", "Maths_Old",        "eemh1",  14),  # Math-Magic (old)
 
-    # ── Grade 6 (New NEP 2024 textbooks) ─────────────────────────────────────
-    ("Grade_6", "Science",        "fecu1",  12),
-    ("Grade_6", "Maths",          "fegp1",  10),
-    ("Grade_6", "Social_Science", "fees1",  14),
+    # ── Grade 6 (NEP 2024) ────────────────────────────────────────────────────
+    ("Grade_6", "Science",        "fecu1",  12),  # Curiosity
+    ("Grade_6", "Maths",          "fegp1",  10),  # Ganita Prakash
+    ("Grade_6", "Social_Science", "fees1",  14),  # Exploring Society
+    ("Grade_6", "English",        "fepr1",   8),  # Poorvi
 
-    # ── Grade 7 (New NEP 2024 textbooks) ─────────────────────────────────────
-    ("Grade_7", "Science",        "gecu1",  12),
-    ("Grade_7", "Maths",          "gegp1",   8),
-    ("Grade_7", "Social_Science", "gees1",  12),
-    ("Grade_7", "English",        "gehc1",   8),
+    # ── Grade 7 (NEP 2024) ────────────────────────────────────────────────────
+    ("Grade_7", "Science",        "gecu1",  12),  # Curiosity
+    ("Grade_7", "Maths",          "gegp1",   8),  # Ganita Prakash
+    ("Grade_7", "Social_Science", "gees1",  12),  # Exploring Society
+    ("Grade_7", "English",        "gepr1",   8),  # Poorvi (NEP 2024 — replaces Honeycomb)
 
-    # ── Grade 8 (New NEP 2024 textbooks) ─────────────────────────────────────
-    ("Grade_8", "Science",        "hecu1",  13),
-    ("Grade_8", "Maths_Part1",    "hegp1",   7),
-    ("Grade_8", "Maths_Part2",    "hegp2",   7),
-    ("Grade_8", "Social_Science", "hees1",   7),
+    # ── Grade 8 (NEP 2024) ────────────────────────────────────────────────────
+    ("Grade_8", "Science",        "hecu1",  13),  # Curiosity
+    ("Grade_8", "Maths_Part1",    "hegp1",   7),  # Ganita Prakash Part 1
+    ("Grade_8", "Maths_Part2",    "hegp2",   7),  # Ganita Prakash Part 2
+    ("Grade_8", "Social_Science", "hees1",   7),  # Exploring Society
+    ("Grade_8", "English",        "hepr1",   8),  # Poorvi
 
     # ── Grade 9 ───────────────────────────────────────────────────────────────
-    ("Grade_9", "Maths",          "iemh1",  12),
-    ("Grade_9", "Science",        "iesc1",  12),
-    ("Grade_9", "English",        "iemo1",   9),
-    ("Grade_9", "Social_Science", "iess1",   6),
-    ("Grade_9", "Social_Science", "iess2",   4),
+    ("Grade_9", "Maths",                 "iemh1",  12),  # Mathematics
+    ("Grade_9", "Science",               "iesc1",  12),  # Science
+    ("Grade_9", "English",               "iebe1",   9),  # Beehive / Kaveri (main reader)
+    ("Grade_9", "English_Supplementary", "iemo1",  10),  # Moments (supplementary reader)
+    ("Grade_9", "SS_Geography",          "iess1",   6),  # Contemporary India I
+    ("Grade_9", "SS_Economics",          "iess2",   4),  # Understanding Economics I
+    ("Grade_9", "SS_History",            "iess3",   5),  # India & the Contemporary World I
+    ("Grade_9", "SS_Civics",             "iess4",   6),  # Democratic Politics I
 
     # ── Grade 10 ──────────────────────────────────────────────────────────────
-    ("Grade_10", "Maths",          "jemh1",  14),
-    ("Grade_10", "Science",        "jesc1",  13),
-    ("Grade_10", "Social_Science", "jess1",   7),
+    ("Grade_10", "Maths",                 "jemh1",  14),  # Mathematics
+    ("Grade_10", "Science",               "jesc1",  13),  # Science
+    ("Grade_10", "English",               "jeff1",  11),  # First Flight (main reader)
+    ("Grade_10", "English_Supplementary", "jefp1",  10),  # Footprints Without Feet
+    ("Grade_10", "SS_Geography",          "jess1",   7),  # Contemporary India II
+    ("Grade_10", "SS_Economics",          "jess2",   5),  # Understanding Economic Development
+    ("Grade_10", "SS_History",            "jess3",   5),  # India & the Contemporary World II
+    ("Grade_10", "SS_Civics",             "jess4",   8),  # Democratic Politics II
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -174,7 +191,7 @@ def run_download(force_list=None):
     only those files are (re-)downloaded.
     """
     print("=" * 62)
-    print("  NCERT English Books Downloader  (Grades 6-10)")
+    print("  NCERT English Books Downloader  (Grades 4-10)")
     print("=" * 62)
     print("  Saving to : " + BASE_DIR)
     total_chapters = sum(n for _, _, _, n in BOOKS)
