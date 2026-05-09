@@ -9,38 +9,45 @@
 <div class="form-card">
   <form method="POST" action="{{ url_for('parent.add_student') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
     <div class="form-group">
       <label class="form-label">Full Name</label>
-      <input type="text" name="name" id="name-input" class="form-control" placeholder="e.g. Scott Tiger" required oninput="updatePreview()">
-      <small class="form-hint">Password will be set to the <strong>last name in lowercase</strong> automatically.
-        Preview: <span id="pw-preview" style="color:var(--emerald); font-weight:700;">—</span>
-      </small>
+      <input type="text" name="name" id="name-input" class="form-control"
+             placeholder="e.g. Scott Tiger" required oninput="updatePreview()">
     </div>
-    <div class="form-group">
-      <label class="form-label">Username</label>
-      <input type="text" name="username" class="form-control" placeholder="e.g. scott" required>
-      <small class="form-hint">Student uses this to log in after claiming their account.</small>
+
+    <div class="form-group" style="background:var(--bg-elevated); border:1px solid var(--border);
+         border-radius:var(--radius); padding:.75rem 1rem;">
+      <div style="font-size:.82rem; color:var(--text-muted); margin-bottom:.4rem;">Auto-generated credentials</div>
+      <div style="display:flex; gap:2rem; flex-wrap:wrap;">
+        <div>
+          <span style="font-size:.78rem; color:var(--text-muted);">USERNAME</span><br>
+          <strong id="un-preview" style="color:var(--indigo);">—</strong>
+          <span style="font-size:.75rem; color:var(--text-muted); margin-left:.3rem;">(first name)</span>
+        </div>
+        <div>
+          <span style="font-size:.78rem; color:var(--text-muted);">PASSWORD</span><br>
+          <strong id="pw-preview" style="color:var(--emerald);">—</strong>
+          <span style="font-size:.75rem; color:var(--text-muted); margin-left:.3rem;">(last name)</span>
+        </div>
+      </div>
     </div>
+
     <div class="form-group">
       <label class="form-label">Email</label>
       <input type="email" name="email" class="form-control" placeholder="student@email.com" required>
     </div>
+
     <div class="form-group">
       <label class="form-label">Grade</label>
       <select name="grade" class="form-control" required>
         <option value="">— Select Grade —</option>
-        <option value="1">Grade 1</option>
-        <option value="2">Grade 2</option>
-        <option value="3">Grade 3</option>
-        <option value="4">Grade 4</option>
-        <option value="5">Grade 5</option>
-        <option value="6">Grade 6</option>
-        <option value="7">Grade 7</option>
-        <option value="8">Grade 8</option>
-        <option value="9">Grade 9</option>
-        <option value="10">Grade 10</option>
+        {% for g in range(1, 11) %}
+        <option value="{{ g }}">Grade {{ g }}</option>
+        {% endfor %}
       </select>
     </div>
+
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">Create Student Account</button>
       <a href="{{ url_for('parent.students') }}" class="btn btn-outline ml-1">Cancel</a>
@@ -50,10 +57,9 @@
 
 <script>
 function updatePreview() {
-  const name  = document.getElementById('name-input').value.trim();
-  const parts = name.split(/\s+/);
-  const pw    = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '—';
-  document.getElementById('pw-preview').textContent = pw;
+  const parts = document.getElementById('name-input').value.trim().split(/\s+/);
+  document.getElementById('un-preview').textContent = parts.length >= 1 ? parts[0].toLowerCase() : '—';
+  document.getElementById('pw-preview').textContent = parts.length >= 2 ? parts[parts.length - 1].toLowerCase() : '—';
 }
 </script>
 {% endblock %}

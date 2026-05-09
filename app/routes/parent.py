@@ -58,14 +58,14 @@ def students():
 def add_student():
     from app import bcrypt
     if request.method == 'POST':
-        name     = request.form.get('name', '').strip()
-        username = request.form.get('username', '').strip()
-        email    = request.form.get('email', '').strip()
-        grade    = request.form.get('grade', type=int)
+        name  = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        grade = request.form.get('grade', type=int)
 
-        # Auto-derive password from last name (lowercase)
+        # Auto-derive username (first name) and password (last name), both lowercase
         parts    = name.split()
-        password = parts[-1].lower() if len(parts) > 1 else name.lower()
+        username = parts[0].lower() if parts else ''
+        password = parts[-1].lower() if len(parts) > 1 else username
 
         if not all([name, username, email, grade]):
             flash('All fields are required.', 'danger')
