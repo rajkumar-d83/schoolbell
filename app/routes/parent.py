@@ -301,9 +301,9 @@ def upload():
 @login_required
 @parent_required
 def generate_questions(chapter_id):
-    print(f"[route] generate_questions called chapter={chapter_id} method={request.method}", file=sys.stderr, flush=True)
+    current_app.logger.info(f"[route] generate_questions called chapter={chapter_id} method={request.method}")
     chapter = Chapter.query.get_or_404(chapter_id)
-    print(f"[route] chapter loaded: {chapter.title!r} pdf_text_len={len(chapter.pdf_text or '')}", file=sys.stderr, flush=True)
+    current_app.logger.info(f"[route] chapter loaded: {chapter.title!r} pdf_text_len={len(chapter.pdf_text or '')}")
 
     if request.method == 'POST':
         num_questions = request.form.get('num_questions', 100, type=int)
