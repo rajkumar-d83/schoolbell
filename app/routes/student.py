@@ -5,7 +5,8 @@ from datetime import datetime
 import json, random
 from app import db
 from app.models.models import Subject, Chapter, Question, QuizSession, QuestionAttempt
-from app.services.analytics import get_student_performance
+from app.services.analytics import (get_student_performance, get_student_badges,
+                                    xp_for_session, compute_total_xp, get_level_info)
 
 student_bp = Blueprint('student', __name__, url_prefix='/student')
 
@@ -26,8 +27,12 @@ def student_required(f):
 def dashboard():
     subjects = Subject.query.filter_by(grade=current_user.grade).all()
     performance = get_student_performance(current_user.id)
+    badges = get_student_badges(current_user.id)
+    all_sessions = QuizSession.query.filter_by(student_id=current_user.id, is_completed=True).all()
+    level_info = get_level_info(compute_total_xp(all_sessions))
     return render_template('student/dashboard.html',
-                           subjects=subjects, performance=performance)
+                           subjects=subjects, performance=performance,
+                           badges=badges, level_info=level_info)
 
 
 @student_bp.route('/subjects')
@@ -96,6 +101,47 @@ def start_quiz(chapter_id):
 
     return redirect(url_for('student.quiz',
                             session_id=session.id, question_index=0))
+
+
+@student_bp.route('/quiz/mistakes/<int:chapter_id>')
+@login_required
+@student_required
+def start_mistakes_quiz(chapter_id):
+    chapter = Chapter.query.get_or_404(chapter_id)
+
+    wrong_question_ids = {
+        row[0] for row in
+        db.session.query(QuestionAttempt.question_id)
+        .join(QuizSession, QuestionAttempt.session_id == QuizSession.id)
+        .filter(
+            QuizSession.student_id == current_user.id,
+            QuizSession.chapter_id == chapter_id,
+            QuizSession.is_completed == True,
+            QuestionAttempt.is_correct == False
+        ).all()
+    }
+
+    if not wrong_question_ids:
+        flash("No mistakes to practice — you've got them all right!", 'success')
+        return redirect(url_for('student.chapters', subject_id=chapter.subject_id))
+
+    questions = (Question.query
+                 .filter(Question.id.in_(wrong_question_ids),
+                         Question.chapter_id == chapter_id)
+                 .all())
+    random.shuffle(questions)
+    selected = questions[:QUIZ_SIZE]
+
+    session = QuizSession(
+        student_id=current_user.id,
+        chapter_id=chapter_id,
+        total_questions=len(selected),
+        question_ids=json.dumps([q.id for q in selected])
+    )
+    db.session.add(session)
+    db.session.commit()
+
+    return redirect(url_for('student.quiz', session_id=session.id, question_index=0))
 
 
 @student_bp.route('/quiz/<int:session_id>/<int:question_index>')
@@ -186,8 +232,31 @@ def complete_quiz(session_id):
         db.session.commit()
 
     attempts = QuestionAttempt.query.filter_by(session_id=session_id).all()
+    xp_gained = xp_for_session(quiz_session.score_percent)
+    all_sessions = QuizSession.query.filter_by(student_id=quiz_session.student_id, is_completed=True).all()
+    level_info = get_level_info(compute_total_xp(all_sessions))
     return render_template('student/quiz_complete.html',
-                           quiz_session=quiz_session, attempts=attempts)
+                           quiz_session=quiz_session, attempts=attempts,
+                           xp_gained=xp_gained, level_info=level_info)
+
+
+@student_bp.route('/quiz/<int:session_id>/message')
+@login_required
+def quiz_message(session_id):
+    from app.services.ai_messages import generate_quiz_message
+    quiz_session = QuizSession.query.get_or_404(session_id)
+    chapter = Chapter.query.get(quiz_session.chapter_id)
+    all_sessions = QuizSession.query.filter_by(student_id=quiz_session.student_id, is_completed=True).all()
+    level_info = get_level_info(compute_total_xp(all_sessions))
+    message = generate_quiz_message(
+        student_name=current_user.name,
+        chapter_title=chapter.title if chapter else 'the chapter',
+        score_percent=quiz_session.score_percent,
+        correct=quiz_session.correct_answers,
+        total=quiz_session.total_questions,
+        level_name=level_info['name'],
+    )
+    return jsonify({'message': message})
 
 
 @student_bp.route('/chapters/<int:chapter_id>/read')
@@ -208,6 +277,44 @@ def read_chapter(chapter_id):
 def performance():
     performance = get_student_performance(current_user.id)
     return render_template('student/performance.html', performance=performance)
+
+
+@student_bp.route('/chapters/<int:chapter_id>/flashcards')
+@login_required
+@student_required
+def flashcards(chapter_id):
+    chapter = Chapter.query.get_or_404(chapter_id)
+    subject = Subject.query.get_or_404(chapter.subject_id)
+
+    cards = []
+
+    # Primary source: cheatsheet key_concepts + key_facts
+    if chapter.cheatsheet:
+        try:
+            data = json.loads(chapter.cheatsheet)
+            for item in data.get('key_concepts', []):
+                cards.append({'front': item['term'], 'back': item['definition'], 'type': 'concept'})
+            for fact in data.get('key_facts', []):
+                cards.append({'front': 'Key Fact', 'back': fact, 'type': 'fact'})
+        except Exception:
+            pass
+
+    # Fallback: quiz questions
+    if not cards:
+        qs = Question.query.filter_by(chapter_id=chapter_id).limit(20).all()
+        for q in qs:
+            correct_text = getattr(q, 'option_' + q.correct_answer.lower(), '')
+            back = f"{q.correct_answer}: {correct_text}"
+            if q.explanation:
+                back += f"\n\n{q.explanation}"
+            cards.append({'front': q.question_text, 'back': back, 'type': 'question'})
+
+    if not cards:
+        flash('No flashcard content yet — generate questions or a cheatsheet first.', 'warning')
+        return redirect(url_for('student.chapters', subject_id=subject.id))
+
+    return render_template('student/flashcards.html',
+                           chapter=chapter, subject=subject, cards=cards)
 
 
 @student_bp.route('/subjects/<int:subject_id>/cheatsheet')

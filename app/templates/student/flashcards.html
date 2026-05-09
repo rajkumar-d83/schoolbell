@@ -1,0 +1,267 @@
+{% extends "shared/base.html" %}
+{% block title %}Flashcards – {{ chapter.title }}{% endblock %}
+
+{% block content %}
+<div class="fc-page">
+
+  <!-- Header -->
+  <div class="fc-header">
+    <a href="{{ url_for('student.chapters', subject_id=chapter.subject_id) }}"
+       class="btn btn-outline btn-sm">← Back</a>
+    <div class="fc-title-block">
+      <span class="fc-subject-label">{{ subject.name }}</span>
+      <span class="fc-chapter-label">{{ chapter.title }}</span>
+    </div>
+    <button class="btn btn-outline btn-sm" id="shuffle-btn">⇄ Shuffle</button>
+  </div>
+
+  <!-- Progress -->
+  <div class="fc-progress-wrap">
+    <div class="fc-progress-track">
+      <div class="fc-progress-known" id="progress-known"></div>
+    </div>
+    <span class="fc-counter" id="fc-counter"></span>
+  </div>
+
+  <!-- Known / Remaining pills -->
+  <div class="fc-stats-row">
+    <span class="fc-pill fc-pill-known" id="stat-known">✓ Known: 0</span>
+    <span class="fc-pill fc-pill-rem"   id="stat-rem">Remaining: {{ cards|length }}</span>
+  </div>
+
+  <!-- Card scene -->
+  <div class="fc-scene" id="fc-scene">
+    <div class="fc-card" id="fc-card">
+
+      <div class="fc-face fc-front">
+        <span class="fc-type-label" id="front-label"></span>
+        <div class="fc-text" id="front-text"></div>
+        <span class="fc-tap-hint">Tap to reveal →</span>
+      </div>
+
+      <div class="fc-face fc-back">
+        <span class="fc-type-label fc-type-answer" id="back-label"></span>
+        <div class="fc-text fc-back-text" id="back-text"></div>
+        <button class="fc-flip-back" id="flip-back-btn">↩ flip back</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Skip (shown before flip) -->
+  <div class="fc-skip-row" id="fc-skip-row">
+    <button class="fc-skip-btn" id="btn-skip">Skip for now →</button>
+  </div>
+
+  <!-- Mark buttons (shown after flip) -->
+  <div class="fc-actions" id="fc-actions" style="display:none;">
+    <button class="btn btn-fc-nope" id="btn-nope">😅 Still Learning</button>
+    <button class="btn btn-fc-got"  id="btn-got">✓ Got it!</button>
+  </div>
+
+  <!-- Keyboard hint -->
+  <div class="fc-key-hint" id="fc-key-hint">
+    <span>Space = flip</span><span>→ = Got it</span><span>← = Still Learning</span>
+  </div>
+
+  <!-- Done screen -->
+  <div class="fc-done" id="fc-done" style="display:none;">
+    <div class="fc-done-icon" id="done-icon"></div>
+    <h2 class="fc-done-title" id="done-title"></h2>
+    <p  class="fc-done-msg"   id="done-msg"></p>
+    <div class="fc-done-actions">
+      <button class="btn btn-primary" id="btn-restart">🔄 Start Over</button>
+      {% if chapter.is_processed %}
+      <a href="{{ url_for('student.start_quiz', chapter_id=chapter.id) }}"
+         class="btn btn-outline">Take Quiz →</a>
+      {% endif %}
+    </div>
+  </div>
+
+</div><!-- fc-page -->
+
+<script>
+(function() {
+  /* ── Data ── */
+  const ALL_CARDS = {{ cards | tojson }}.map(function(c, i) {
+    return Object.assign({}, c, { _id: i });
+  });
+  let deck  = ALL_CARDS.slice();
+  let index = 0;
+  let flipped = false;
+  const known = new Set();
+
+  /* ── DOM refs ── */
+  const cardEl      = document.getElementById('fc-card');
+  const frontText   = document.getElementById('front-text');
+  const frontLabel  = document.getElementById('front-label');
+  const backText    = document.getElementById('back-text');
+  const backLabel   = document.getElementById('back-label');
+  const counter     = document.getElementById('fc-counter');
+  const progKnown   = document.getElementById('progress-known');
+  const statKnown   = document.getElementById('stat-known');
+  const statRem     = document.getElementById('stat-rem');
+  const actionsEl   = document.getElementById('fc-actions');
+  const skipRow     = document.getElementById('fc-skip-row');
+  const doneEl      = document.getElementById('fc-done');
+  const sceneEl     = document.getElementById('fc-scene');
+  const keyHint     = document.getElementById('fc-key-hint');
+
+  const TYPE_LABELS = { concept: 'Term', fact: 'Key Fact', question: 'Question' };
+  const BACK_LABELS = { concept: 'Definition', fact: 'Key Fact', question: 'Answer' };
+
+  /* ── Render current card ── */
+  function updateCard() {
+    if (deck.length === 0) { showDone(); return; }
+    const card = deck[index];
+
+    frontLabel.textContent = TYPE_LABELS[card.type] || 'Term';
+    frontText.textContent  = card.front;
+    backLabel.textContent  = BACK_LABELS[card.type] || 'Definition';
+    backText.textContent   = card.back;
+
+    setFlipped(false);
+    updateStats();
+  }
+
+  function updateStats() {
+    const total = ALL_CARDS.length;
+    counter.textContent     = (index + 1) + ' of ' + deck.length + ' remaining';
+    progKnown.style.width   = (known.size / total * 100) + '%';
+    statKnown.textContent   = '✓ Known: ' + known.size;
+    statRem.textContent     = 'Remaining: ' + (deck.length - known.size);
+  }
+
+  /* ── Flip ── */
+  function setFlipped(state) {
+    flipped = state;
+    cardEl.classList.toggle('fc-flipped', state);
+    actionsEl.style.display = state ? 'flex' : 'none';
+    skipRow.style.display   = state ? 'none' : 'flex';
+    keyHint.style.display   = state ? 'none' : 'flex';
+  }
+
+  function flip() {
+    if (deck.length === 0) return;
+    setFlipped(!flipped);
+  }
+
+  /* ── Mark as known ── */
+  function markGot() {
+    if (!flipped || deck.length === 0) return;
+    const card = deck[index];
+    known.add(card._id);
+    deck.splice(index, 1);
+    if (deck.length === 0) { showDone(); return; }
+    if (index >= deck.length) index = 0;
+    updateCard();
+  }
+
+  /* ── Still learning — move to back ── */
+  function markNope() {
+    if (!flipped || deck.length === 0) return;
+    const card = deck.splice(index, 1)[0];
+    deck.push(card);
+    if (index >= deck.length - 1) index = 0;
+    updateCard();
+  }
+
+  /* ── Skip (no mark) ── */
+  function skip() {
+    if (deck.length === 0) return;
+    index = (index + 1) % deck.length;
+    updateCard();
+  }
+
+  /* ── Done screen ── */
+  function showDone() {
+    sceneEl.style.display   = 'none';
+    actionsEl.style.display = 'none';
+    skipRow.style.display   = 'none';
+    keyHint.style.display   = 'none';
+    doneEl.style.display    = 'block';
+
+    const total = ALL_CARDS.length;
+    const pct   = Math.round(known.size / total * 100);
+    progKnown.style.width = '100%';
+    counter.textContent   = total + ' of ' + total + ' done';
+
+    if (known.size === total) {
+      document.getElementById('done-icon').textContent  = '🏆';
+      document.getElementById('done-title').textContent = 'Perfect! You know them all!';
+    } else {
+      document.getElementById('done-icon').textContent  = '🎉';
+      document.getElementById('done-title').textContent = 'Session complete!';
+    }
+    document.getElementById('done-msg').textContent =
+      'You knew ' + known.size + ' of ' + total + ' cards (' + pct + '%)';
+  }
+
+  /* ── Event listeners ── */
+  cardEl.addEventListener('click', function(e) {
+    if (e.target.id === 'flip-back-btn') return;
+    flip();
+  });
+  document.getElementById('flip-back-btn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    setFlipped(false);
+  });
+  document.getElementById('btn-got').addEventListener('click',  markGot);
+  document.getElementById('btn-nope').addEventListener('click', markNope);
+  document.getElementById('btn-skip').addEventListener('click', skip);
+
+  document.getElementById('shuffle-btn').addEventListener('click', function() {
+    deck.sort(function() { return Math.random() - .5; });
+    index = 0;
+    updateCard();
+  });
+
+  document.getElementById('btn-restart').addEventListener('click', function() {
+    deck  = ALL_CARDS.slice();
+    deck.sort(function() { return Math.random() - .5; });
+    index = 0;
+    known.clear();
+    sceneEl.style.display = '';
+    doneEl.style.display  = 'none';
+    updateCard();
+  });
+
+  /* ── Keyboard ── */
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === ' ' || e.key === 'ArrowUp') {
+      flip(); e.preventDefault();
+    } else if (e.key === 'ArrowRight') {
+      if (flipped) markGot(); else skip(); e.preventDefault();
+    } else if (e.key === 'ArrowLeft') {
+      if (flipped) markNope(); else { index = (index - 1 + deck.length) % deck.length; updateCard(); } e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+      if (flipped) markNope(); e.preventDefault();
+    }
+  });
+
+  /* ── Touch swipe ── */
+  var touchStartX = 0, touchStartY = 0;
+  cardEl.addEventListener('touchstart', function(e) {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  cardEl.addEventListener('touchend', function(e) {
+    var dx = e.changedTouches[0].screenX - touchStartX;
+    var dy = e.changedTouches[0].screenY - touchStartY;
+    if (Math.abs(dy) > Math.abs(dx) + 20) return; // vertical scroll
+    if (Math.abs(dx) < 30) return; // tap handled by click
+    if (flipped) {
+      if (dx > 50)  markGot();
+      if (dx < -50) markNope();
+    } else {
+      if (dx > 50)  { index = (index - 1 + deck.length) % deck.length; updateCard(); }
+      if (dx < -50) skip();
+    }
+  }, { passive: true });
+
+  /* ── Boot ── */
+  updateCard();
+})();
+</script>
+{% endblock %}

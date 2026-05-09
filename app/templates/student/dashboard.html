@@ -9,6 +9,27 @@
   </div>
 </div>
 
+<!-- XP / Level Bar -->
+<div class="xp-bar-wrap">
+  <div class="xp-level-badge">
+    <span class="xp-level-icon">{{ level_info.icon }}</span>
+    <div class="xp-level-text">
+      <span class="xp-level-name">{{ level_info.name }}</span>
+      <span class="xp-level-num">Lv.{{ level_info.level }}</span>
+    </div>
+  </div>
+  <div class="xp-bar-track">
+    <div class="xp-bar-fill" style="width:{{ level_info.progress }}%"></div>
+  </div>
+  <div class="xp-bar-label">
+    {% if level_info.is_max %}
+      {{ level_info.xp }} XP — Max!
+    {% else %}
+      {{ level_info.xp }}&thinsp;/&thinsp;{{ level_info.next_xp }} XP
+    {% endif %}
+  </div>
+</div>
+
 <!-- Stat Cards -->
 <div class="card-grid three-col">
   <div class="stat-card">
@@ -27,6 +48,19 @@
     <div class="stat-label">Correct Answers</div>
   </div>
 </div>
+
+<!-- Badges -->
+{% if badges %}
+<div class="section-title">🏅 Your Badges</div>
+<div class="badge-shelf">
+  {% for badge in badges %}
+  <div class="badge-item" title="{{ badge.desc }}">
+    <div class="badge-icon">{{ badge.icon }}</div>
+    <div class="badge-name">{{ badge.name }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
 <!-- Weak Topics Alert -->
 {% if performance.weak_topics %}

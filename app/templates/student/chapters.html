@@ -43,9 +43,15 @@
           <a href="{{ url_for('student.read_chapter', chapter_id=chapter.id) }}"
              class="btn btn-outline btn-sm">📖 Read</a>
           {% endif %}
+          {% if chapter.is_processed or chapter.cheatsheet %}
+          <a href="{{ url_for('student.flashcards', chapter_id=chapter.id) }}"
+             class="btn btn-fc btn-sm">🃏 Flashcards</a>
+          {% endif %}
           {% if chapter.is_processed %}
           <a href="{{ url_for('student.start_quiz', chapter_id=chapter.id) }}"
              class="btn btn-primary btn-sm">Start Quiz →</a>
+          <a href="{{ url_for('student.start_mistakes_quiz', chapter_id=chapter.id) }}"
+             class="btn btn-mistakes btn-sm">💪 Fix Mistakes</a>
           {% else %}
           <button class="btn btn-sm btn-disabled" disabled>Not Ready</button>
           {% endif %}
