@@ -24,17 +24,6 @@ def extract_pdf_text(filepath):
 
 
 def generate_questions_from_text(pdf_text, num_questions, chapter_title):
-    """Send PDF text to Claude API and get MCQ questions back.
-    Batches requests >50 questions into two API calls to stay within timeouts."""
-    if num_questions > 50:
-        half = num_questions // 2
-        batch1 = _generate_batch(pdf_text, half, chapter_title)
-        batch2 = _generate_batch(pdf_text, num_questions - half, chapter_title)
-        return batch1 + batch2
-    return _generate_batch(pdf_text, num_questions, chapter_title)
-
-
-def _generate_batch(pdf_text, num_questions, chapter_title):
     """Single Claude API call for up to 50 questions."""
     try:
         api_key = os.environ.get('ANTHROPIC_API_KEY')

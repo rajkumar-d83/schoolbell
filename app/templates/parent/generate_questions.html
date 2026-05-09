@@ -21,13 +21,13 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <div class="form-group">
-      <label class="form-label">Number of Questions: <strong id="q-count">100</strong></label>
+      <label class="form-label">Number of Questions: <strong id="q-count">30</strong></label>
       <input type="range" name="num_questions" id="q-slider"
-             min="10" max="100" value="100" step="10" class="range-slider"
+             min="10" max="50" value="30" step="10" class="range-slider"
              oninput="document.getElementById('q-count').textContent = this.value">
       <div class="range-labels">
         <span>10 (quick)</span>
-        <span>100 (full bank)</span>
+        <span>50 (max per run)</span>
       </div>
     </div>
 

@@ -304,8 +304,8 @@ def generate_questions(chapter_id):
     chapter = Chapter.query.get_or_404(chapter_id)
 
     if request.method == 'POST':
-        num_questions = request.form.get('num_questions', 100, type=int)
-        num_questions = max(10, min(100, num_questions))
+        num_questions = request.form.get('num_questions', 30, type=int)
+        num_questions = max(10, min(50, num_questions))
 
         if not chapter.pdf_text:
             flash('No PDF text found. Please re-upload the PDF.', 'danger')
