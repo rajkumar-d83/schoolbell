@@ -20,9 +20,15 @@ chmod 755 /home/schoolbell
 chmod -R 755 "$APP_DIR/app/static"
 chmod -R 755 "$APP_DIR/uploads"
 
-echo "=== Copy service and nginx config ==="
+echo "=== Copy service config ==="
 cp "$APP_DIR/deploy/schoolbell.service" /etc/systemd/system/schoolbell.service
-cp "$APP_DIR/deploy/nginx.conf"         /etc/nginx/sites-available/schoolbell
+
+# Only copy nginx config if not already managed by certbot (avoid overwriting SSL setup)
+if grep -q "ssl_certificate" /etc/nginx/sites-available/schoolbell 2>/dev/null; then
+  echo "    nginx config has SSL — skipping overwrite (certbot manages it)"
+else
+  cp "$APP_DIR/deploy/nginx.conf" /etc/nginx/sites-available/schoolbell
+fi
 
 ln -sf /etc/nginx/sites-available/schoolbell /etc/nginx/sites-enabled/schoolbell
 rm -f /etc/nginx/sites-enabled/default
