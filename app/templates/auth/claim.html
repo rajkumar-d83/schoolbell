@@ -82,14 +82,29 @@ const STUDENT_PASSWORDS = {
   {% endfor %}
 };
 
+const STUDENT_NAMES = {
+  {% for s in unclaimed %}
+  {{ s.id }}: {{ s.name | tojson }}{% if not loop.last %},{% endif %}
+  {% endfor %}
+};
+
 let pwRevealed = false;
 
 function showPw(sel) {
   const id   = parseInt(sel.value, 10);
   const box  = document.getElementById('pw-box');
   const disp = document.getElementById('pw-display');
-  if (id && STUDENT_PASSWORDS[id]) {
-    disp.textContent  = STUDENT_PASSWORDS[id];
+  if (!id) { box.style.display = 'none'; return; }
+
+  // Use stored display_password; fall back to last name lowercase
+  let pw = STUDENT_PASSWORDS[id];
+  if (!pw && STUDENT_NAMES[id]) {
+    const parts = STUDENT_NAMES[id].trim().split(/\s+/);
+    pw = parts[parts.length - 1].toLowerCase();
+  }
+
+  if (pw) {
+    disp.textContent  = pw;
     disp.style.filter = 'blur(5px)';
     document.getElementById('pw-hint').textContent = '(tap to reveal)';
     pwRevealed = false;
