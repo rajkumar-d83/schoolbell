@@ -25,7 +25,9 @@ cp "$APP_DIR/deploy/schoolbell.service" /etc/systemd/system/schoolbell.service
 
 # Only copy nginx config if not already managed by certbot (avoid overwriting SSL setup)
 if grep -q "ssl_certificate" /etc/nginx/sites-available/schoolbell 2>/dev/null; then
-  echo "    nginx config has SSL — skipping overwrite (certbot manages it)"
+  echo "    nginx config has SSL — skipping overwrite; patching timeouts/limits in place"
+  sudo sed -i 's/proxy_read_timeout [0-9]*s/proxy_read_timeout 300s/' /etc/nginx/sites-available/schoolbell
+  sudo sed -i 's/client_max_body_size [0-9]*M/client_max_body_size 20M/' /etc/nginx/sites-available/schoolbell
 else
   cp "$APP_DIR/deploy/nginx.conf" /etc/nginx/sites-available/schoolbell
 fi
