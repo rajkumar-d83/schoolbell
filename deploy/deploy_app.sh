@@ -6,7 +6,9 @@ set -e
 APP_DIR=/home/schoolbell/app
 
 echo "=== Pull latest code ==="
-sudo -u schoolbell git -C "$APP_DIR" pull
+sudo -u schoolbell git -C "$APP_DIR" config core.fileMode false
+sudo -u schoolbell git -C "$APP_DIR" fetch origin
+sudo -u schoolbell git -C "$APP_DIR" reset --hard origin/main
 
 echo "=== Install/update Python packages ==="
 sudo -u schoolbell "$APP_DIR/venv/bin/pip" install -r "$APP_DIR/requirements.txt"
