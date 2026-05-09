@@ -11,7 +11,7 @@ ExecStart=/home/schoolbell/app/venv/bin/gunicorn wsgi:app \
     --workers 2 \
     --threads 2 \
     --bind 127.0.0.1:8000 \
-    --timeout 120 \
+    --timeout 300 \
     --access-logfile /home/schoolbell/app/logs/access.log \
     --error-logfile  /home/schoolbell/app/logs/error.log
 ExecReload=/bin/kill -s HUP $MAINPID
