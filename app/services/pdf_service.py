@@ -6,7 +6,7 @@ import fitz  # PyMuPDF
 
 
 def _log(msg):
-    print(msg, file=sys.stderr, flush=True)
+    print(msg, file=sys.stderr)
 
 
 def extract_pdf_text(filepath):
@@ -27,7 +27,7 @@ def generate_questions_from_text(pdf_text, num_questions, chapter_title):
     """Send PDF text to Claude API and get MCQ questions back."""
     try:
         api_key = os.environ.get('ANTHROPIC_API_KEY')
-        _log(f"[generate_questions] start — {num_questions} Qs, key={'set' if api_key else 'MISSING'}", flush=True)
+        _log(f"[generate_questions] start — {num_questions} Qs, key={'set' if api_key else 'MISSING'}")
         client = anthropic.Anthropic(api_key=api_key, timeout=240.0)
 
         # Work out how many of each type to generate
@@ -78,14 +78,14 @@ Return ONLY a valid JSON array — no extra text, no markdown fences. Each objec
 
 Return only the JSON array, nothing else."""
 
-        _log(f"[generate_questions] calling Claude API…", flush=True)
+        _log(f"[generate_questions] calling Claude API…")
         with client.messages.stream(
             model="claude-sonnet-4-6",
             max_tokens=16000,
             messages=[{"role": "user", "content": prompt}]
         ) as stream:
             response_text = stream.get_final_text().strip()
-        _log(f"[generate_questions] response received — {len(response_text)} chars", flush=True)
+        _log(f"[generate_questions] response received — {len(response_text)} chars")
 
         # Strip markdown code fences if present
         if response_text.startswith('```'):
@@ -93,14 +93,14 @@ Return only the JSON array, nothing else."""
             response_text = '\n'.join(lines[1:-1])
 
         questions = json.loads(response_text)
-        _log(f"[generate_questions] parsed {len(questions)} questions", flush=True)
+        _log(f"[generate_questions] parsed {len(questions)} questions")
         return questions
 
     except json.JSONDecodeError as e:
-        _log(f"[generate_questions] JSON parse error: {e}", flush=True)
+        _log(f"[generate_questions] JSON parse error: {e}")
         return []
     except Exception as e:
-        _log(f"[generate_questions] error: {type(e).__name__}: {e}", flush=True)
+        _log(f"[generate_questions] error: {type(e).__name__}: {e}")
         return []
 
 
