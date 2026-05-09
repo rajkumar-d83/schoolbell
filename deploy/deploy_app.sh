@@ -15,6 +15,11 @@ echo "=== Initialise / migrate database ==="
 cd "$APP_DIR"
 sudo -u schoolbell "$APP_DIR/venv/bin/python" init_db.py
 
+echo "=== Fix static file permissions ==="
+chmod 755 /home/schoolbell
+chmod -R 755 "$APP_DIR/app/static"
+chmod -R 755 "$APP_DIR/uploads"
+
 echo "=== Copy service and nginx config ==="
 cp "$APP_DIR/deploy/schoolbell.service" /etc/systemd/system/schoolbell.service
 cp "$APP_DIR/deploy/nginx.conf"         /etc/nginx/sites-available/schoolbell

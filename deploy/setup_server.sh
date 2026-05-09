@@ -28,7 +28,12 @@ sudo -u schoolbell "$APP_DIR/venv/bin/pip" install -r "$APP_DIR/requirements.txt
 
 echo "=== [6/7] Folders and permissions ==="
 mkdir -p "$APP_DIR/uploads"
+mkdir -p "$APP_DIR/logs"
 chown -R schoolbell:schoolbell "$APP_DIR"
+# Allow nginx (www-data) to read static files and uploads
+chmod 755 /home/schoolbell
+chmod -R 755 "$APP_DIR/app/static"
+chmod -R 755 "$APP_DIR/uploads"
 
 echo "=== [7/7] Firewall ==="
 ufw allow OpenSSH
