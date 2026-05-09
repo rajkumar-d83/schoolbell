@@ -38,8 +38,7 @@
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary btn-lg" id="gen-btn"
-              onclick="showSpinner()">
+      <button type="submit" class="btn btn-primary btn-lg" id="gen-btn">
         Generate Questions →
       </button>
       <a href="{{ url_for('parent.dashboard') }}" class="btn btn-outline ml-1">Skip for now</a>
@@ -57,12 +56,10 @@
 </div>
 
 <script>
-function showSpinner() {
+document.getElementById('gen-form').addEventListener('submit', function() {
   var btn = document.getElementById('gen-btn');
-  btn.disabled = true;   /* disable immediately to prevent double-submit */
-  setTimeout(() => {
-    document.getElementById('spinner').style.display = 'flex';
-  }, 100);
-}
+  btn.disabled = true;
+  document.getElementById('spinner').style.display = 'flex';
+});
 </script>
 {% endblock %}
