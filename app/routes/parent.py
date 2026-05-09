@@ -9,7 +9,7 @@ from app.services.pdf_service import (extract_pdf_text, generate_questions_from_
                                        generate_cheatsheet as make_cheatsheet)
 import fitz as _fitz_lib
 from app.services.analytics import get_student_performance
-import os, re, shutil, uuid, json, sys
+import os, re, shutil, uuid, json
 
 parent_bp = Blueprint('parent', __name__, url_prefix='/parent')
 
@@ -301,9 +301,7 @@ def upload():
 @login_required
 @parent_required
 def generate_questions(chapter_id):
-    current_app.logger.info(f"[route] generate_questions called chapter={chapter_id} method={request.method}")
     chapter = Chapter.query.get_or_404(chapter_id)
-    current_app.logger.info(f"[route] chapter loaded: {chapter.title!r} pdf_text_len={len(chapter.pdf_text or '')}")
 
     if request.method == 'POST':
         num_questions = request.form.get('num_questions', 100, type=int)

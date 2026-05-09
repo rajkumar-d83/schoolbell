@@ -25,12 +25,6 @@ def create_app(config_name='development'):
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level or logging.INFO)
 
-    # Register FIRST — before CSRF — so we see every request immediately
-    @app.before_request
-    def log_every_request():
-        from flask import request
-        app.logger.info(f"[REQ] {request.method} {request.path}")
-
     db.init_app(app)
     login_manager.init_app(app)
     bcrypt.init_app(app)
