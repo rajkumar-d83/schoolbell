@@ -249,6 +249,13 @@ FLASK_CONFIG=production
 
 ## 10. Useful One-Liners
 
+> **Note:** `sqlite3` CLI is not installed on the server. Use Python's built-in module instead:
+> ```bash
+> sudo -u schoolbell /home/schoolbell/app/venv/bin/python3 -c "
+> import sqlite3; conn = sqlite3.connect('/home/schoolbell/app/schoolbell.db')
+> cur = conn.cursor(); cur.execute('YOUR SQL HERE'); print(cur.fetchall()); conn.close()"
+> ```
+
 ```bash
 # How long has the app been running?
 sudo systemctl status schoolbell | grep Active
@@ -257,14 +264,56 @@ sudo systemctl status schoolbell | grep Active
 ls /home/schoolbell/app/uploads/*.pdf | wc -l
 
 # Count questions in the database
-sudo -u schoolbell sqlite3 /home/schoolbell/app/schoolbell.db "SELECT COUNT(*) FROM questions;"
+sudo -u schoolbell /home/schoolbell/app/venv/bin/python3 -c "
+import sqlite3; c=sqlite3.connect('/home/schoolbell/app/schoolbell.db')
+print(c.execute('SELECT COUNT(*) FROM questions').fetchone()[0],'questions'); c.close()"
 
 # Count students
-sudo -u schoolbell sqlite3 /home/schoolbell/app/schoolbell.db "SELECT COUNT(*) FROM users WHERE role='student';"
+sudo -u schoolbell /home/schoolbell/app/venv/bin/python3 -c "
+import sqlite3; c=sqlite3.connect('/home/schoolbell/app/schoolbell.db')
+print(c.execute(\"SELECT COUNT(*) FROM users WHERE role='student'\").fetchone()[0],'students'); c.close()"
+
+# Check a specific chapter's pdf_text size
+sudo -u schoolbell /home/schoolbell/app/venv/bin/python3 -c "
+import sqlite3; c=sqlite3.connect('/home/schoolbell/app/schoolbell.db')
+print(c.execute('SELECT title, length(pdf_text) FROM chapters WHERE id=?',(116,)).fetchone()); c.close()"
 
 # Who logged in recently (last 20 access log lines)
 sudo tail -20 /home/schoolbell/app/logs/access.log
 
 # Restart everything at once
 sudo systemctl restart schoolbell && sudo systemctl reload nginx
+
+# Check gunicorn worker threads (see if any are stuck)
+ps aux | grep gunicorn
+
+# Check active connections from gunicorn workers to Anthropic API
+ss -tp state established | grep python
 ```
+
+---
+
+## 11. Troubleshooting Question Generation
+
+**Symptom:** Spinner runs forever, no questions generated.
+
+**Step 1 — Check if the POST reaches the server:**
+```bash
+sudo tail -f /home/schoolbell/app/logs/error.log
+```
+You should see `[generate_questions] start` within a second of clicking Generate.
+
+**Step 2 — If no log appears:** Worker threads may be exhausted from previous stuck requests. Restart gunicorn:
+```bash
+sudo systemctl restart schoolbell
+```
+Then try again with **10 questions** first to confirm it works.
+
+**Step 3 — If you see a JSON parse error:** The API response was truncated. Try fewer questions (50 max per batch is automatic, 100 questions splits into two calls).
+
+**Step 4 — If you see a timeout error:** The Anthropic API took >240 seconds. Try again — this is usually a temporary API slowness. 10 questions takes ~30 seconds; 100 questions takes ~2–3 minutes (two batches of 50).
+
+**Root causes discovered and fixed:**
+- `btn.disabled = true` synchronously in `onclick` blocked Chrome from submitting the form — fixed by using the form `submit` event
+- No timeout on Anthropic client caused threads to hang for up to 10 minutes — fixed with 240s timeout
+- Large requests (100 Qs) now automatically batched into two 50-question API calls
