@@ -8,7 +8,8 @@
 </div>
 
 <div class="mb-2 action-bar">
-  <a href="{{ url_for('parent.dashboard') }}" class="btn btn-outline">← Dashboard</a>
+  <a href="{{ url_for('parent.subject_chapters', subject_id=chapter.subject_id) }}" class="btn btn-outline">← Chapters</a>
+  <a href="{{ url_for('parent.dashboard') }}" class="btn btn-outline ml-1">⌂ Dashboard</a>
   {% if chapter.pdf_filename %}
   <a href="{{ url_for('parent.teach', chapter_id=chapter.id) }}"
      class="btn btn-teach ml-1">🖥️ Teach This Chapter</a>
