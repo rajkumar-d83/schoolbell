@@ -922,6 +922,38 @@ select.form-control option  { background: var(--bg-elevated); color: var(--text-
   margin-bottom: 1.5rem;
   letter-spacing: -.2px;
 }
+.question-diagram {
+  display: flex;
+  justify-content: center;
+  margin: -.5rem 0 1.25rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .75rem;
+  overflow: hidden;
+}
+.question-diagram svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+.question-diagram-sm {
+  margin: .5rem 0 0;
+  padding: .5rem;
+  max-width: 260px;
+}
+.fc-diagram {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: .25rem 0;
+}
+.fc-diagram svg {
+  max-width: 100%;
+  max-height: 90px;
+  height: auto;
+}
+
 .options-grid { display: flex; flex-direction: column; gap: .65rem; margin-bottom: 1.5rem; }
 .option-btn {
   width: 100%;

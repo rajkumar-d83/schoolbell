@@ -34,7 +34,12 @@
       {% for q in questions %}
       <tr>
         <td class="q-index">{{ loop.index }}</td>
-        <td class="q-text">{{ q.question_text }}</td>
+        <td class="q-text">
+          {{ q.question_text }}
+          {% if q.diagram_svg %}
+          <div class="question-diagram question-diagram-sm">{{ q.diagram_svg | safe }}</div>
+          {% endif %}
+        </td>
         <td>
           <span class="answer-tag">{{ q.correct_answer }}</span>
           <span class="answer-option-text">

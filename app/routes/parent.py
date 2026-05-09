@@ -334,7 +334,8 @@ def generate_questions(chapter_id):
                     correct_answer=q['correct_answer'],
                     explanation=q.get('explanation', ''),
                     difficulty=q.get('difficulty', 'medium'),
-                    topic_tag=q.get('topic_tag', '')
+                    topic_tag=q.get('topic_tag', ''),
+                    diagram_svg=q.get('diagram_svg')
                 ))
                 added += 1
             chapter.is_processed = True

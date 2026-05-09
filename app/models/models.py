@@ -95,6 +95,7 @@ class Question(db.Model):
     explanation    = db.Column(db.Text, nullable=True)
     difficulty     = db.Column(db.String(20), default='medium')
     topic_tag      = db.Column(db.String(100), nullable=True)
+    diagram_svg    = db.Column(db.Text, nullable=True)
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
 
     attempts = db.relationship('QuestionAttempt', backref='question', lazy=True)

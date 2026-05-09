@@ -25,6 +25,10 @@
   <!-- Question -->
   <div class="question-text">{{ question.question_text }}</div>
 
+  {% if question.diagram_svg %}
+  <div class="question-diagram">{{ question.diagram_svg | safe }}</div>
+  {% endif %}
+
   <!-- Hidden data -->
   <input type="hidden" id="csrf-token"      value="{{ csrf_token() }}">
   <input type="hidden" id="session-id"      value="{{ session_id }}">

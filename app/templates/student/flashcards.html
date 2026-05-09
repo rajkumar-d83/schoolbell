@@ -35,6 +35,7 @@
 
       <div class="fc-face fc-front">
         <span class="fc-type-label" id="front-label"></span>
+        <div class="fc-diagram" id="front-diagram" style="display:none;"></div>
         <div class="fc-text" id="front-text"></div>
         <span class="fc-tap-hint">Tap to reveal →</span>
       </div>
@@ -95,6 +96,7 @@
   const cardEl      = document.getElementById('fc-card');
   const frontText   = document.getElementById('front-text');
   const frontLabel  = document.getElementById('front-label');
+  const frontDiag   = document.getElementById('front-diagram');
   const backText    = document.getElementById('back-text');
   const backLabel   = document.getElementById('back-label');
   const counter     = document.getElementById('fc-counter');
@@ -119,6 +121,13 @@
     frontText.textContent  = card.front;
     backLabel.textContent  = BACK_LABELS[card.type] || 'Definition';
     backText.textContent   = card.back;
+    if (card.diagram_svg) {
+      frontDiag.innerHTML       = card.diagram_svg;
+      frontDiag.style.display   = 'block';
+    } else {
+      frontDiag.innerHTML       = '';
+      frontDiag.style.display   = 'none';
+    }
 
     setFlipped(false);
     updateStats();

@@ -109,6 +109,9 @@
       <div class="review-q-num">Q{{ loop.index }}</div>
       <div class="review-body">
         <p class="review-question">{{ attempt.question.question_text }}</p>
+        {% if attempt.question.diagram_svg %}
+        <div class="question-diagram question-diagram-sm">{{ attempt.question.diagram_svg | safe }}</div>
+        {% endif %}
 
         <div class="review-answers">
           <span class="review-label">Your answer:</span>

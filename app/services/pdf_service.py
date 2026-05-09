@@ -1,8 +1,29 @@
 import os
+import re
 import sys
 import json
 import anthropic
 import fitz  # PyMuPDF
+
+
+def sanitize_svg(svg):
+    """Strip dangerous SVG content; return cleaned string or None."""
+    if not svg or not isinstance(svg, str):
+        return None
+    svg = svg.strip()
+    if not svg.startswith('<svg'):
+        return None
+    # Remove event handlers (onclick, onload, etc.)
+    svg = re.sub(r'\s+on\w+\s*=\s*"[^"]*"', '', svg, flags=re.IGNORECASE)
+    svg = re.sub(r"\s+on\w+\s*=\s*'[^']*'", '', svg, flags=re.IGNORECASE)
+    # Remove script elements
+    svg = re.sub(r'<script[\s\S]*?</script>', '', svg, flags=re.IGNORECASE)
+    # Remove external image / use / foreignObject elements
+    svg = re.sub(r'<image[^>]*/?\s*>', '', svg, flags=re.IGNORECASE)
+    svg = re.sub(r'<foreignObject[\s\S]*?</foreignObject>', '', svg, flags=re.IGNORECASE)
+    # Remove href pointing outside the document
+    svg = re.sub(r'(xlink:)?href\s*=\s*"https?://[^"]*"', '', svg, flags=re.IGNORECASE)
+    return svg
 
 
 def _log(msg):
@@ -75,6 +96,7 @@ Return ONLY a valid JSON array — no extra text, no markdown fences. Each objec
 - "explanation": friendly 1–2 sentence explanation (encouraging tone)
 - "difficulty": one of "easy", "medium", or "hard"
 - "topic_tag": short topic label (e.g. "photosynthesis", "fractions")
+- "diagram_svg": null for most questions. ONLY provide an SVG string for questions about geometry, angles, shapes, number lines, graphs, ray diagrams, electric circuits, or other visual concepts where a diagram genuinely helps the student. When provided, use a self-contained <svg> element with these exact attributes: viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg". Use stroke="#94A3B8" fill="none" for shape outlines; fill="#818CF8" for highlighted points or areas; fill="#E2E8F0" font-size="13" for labels. Maximum 12 SVG child elements. No <script>, no event attributes, no external images. For text-recall or story questions, always set this to null.
 
 Return only the JSON array, nothing else."""
 
@@ -93,6 +115,9 @@ Return only the JSON array, nothing else."""
             response_text = '\n'.join(lines[1:-1])
 
         questions = json.loads(response_text)
+        for q in questions:
+            raw_svg = q.get('diagram_svg')
+            q['diagram_svg'] = sanitize_svg(raw_svg) if raw_svg else None
         _log(f"[generate_questions] parsed {len(questions)} questions")
         return questions
 

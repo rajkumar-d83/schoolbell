@@ -307,7 +307,8 @@ def flashcards(chapter_id):
             back = f"{q.correct_answer}: {correct_text}"
             if q.explanation:
                 back += f"\n\n{q.explanation}"
-            cards.append({'front': q.question_text, 'back': back, 'type': 'question'})
+            cards.append({'front': q.question_text, 'back': back, 'type': 'question',
+                          'diagram_svg': q.diagram_svg or None})
 
     if not cards:
         flash('No flashcard content yet — generate questions or a cheatsheet first.', 'warning')
