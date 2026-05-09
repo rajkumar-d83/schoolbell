@@ -7,18 +7,19 @@
 document.addEventListener('DOMContentLoaded', function () {
 
   // ── 1. Flash Message Auto-Dismiss ──────────────────────────────────────────
-  // Fade out and remove .alert elements after 4 seconds
+  // Success/info: 4s. Danger/warning: 10s (enough time to read errors).
   const alerts = document.querySelectorAll('.alert');
   alerts.forEach(function (alert) {
+    const isError = alert.classList.contains('alert-danger') ||
+                    alert.classList.contains('alert-warning');
+    const delay = isError ? 10000 : 4000;
     setTimeout(function () {
       alert.style.transition = 'opacity 0.6s ease';
       alert.style.opacity = '0';
       setTimeout(function () {
-        if (alert.parentNode) {
-          alert.parentNode.removeChild(alert);
-        }
+        if (alert.parentNode) { alert.parentNode.removeChild(alert); }
       }, 600);
-    }, 4000);
+    }, delay);
   });
 
 

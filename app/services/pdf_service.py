@@ -24,7 +24,18 @@ def extract_pdf_text(filepath):
 
 
 def generate_questions_from_text(pdf_text, num_questions, chapter_title):
-    """Send PDF text to Claude API and get MCQ questions back."""
+    """Send PDF text to Claude API and get MCQ questions back.
+    Batches requests >50 questions into two API calls to stay within timeouts."""
+    if num_questions > 50:
+        half = num_questions // 2
+        batch1 = _generate_batch(pdf_text, half, chapter_title)
+        batch2 = _generate_batch(pdf_text, num_questions - half, chapter_title)
+        return batch1 + batch2
+    return _generate_batch(pdf_text, num_questions, chapter_title)
+
+
+def _generate_batch(pdf_text, num_questions, chapter_title):
+    """Single Claude API call for up to 50 questions."""
     try:
         api_key = os.environ.get('ANTHROPIC_API_KEY')
         _log(f"[generate_questions] start — {num_questions} Qs, key={'set' if api_key else 'MISSING'}")
@@ -81,7 +92,7 @@ Return only the JSON array, nothing else."""
         _log(f"[generate_questions] calling Claude API…")
         with client.messages.stream(
             model="claude-sonnet-4-6",
-            max_tokens=16000,
+            max_tokens=8000,
             messages=[{"role": "user", "content": prompt}]
         ) as stream:
             response_text = stream.get_final_text().strip()
