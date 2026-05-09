@@ -15,7 +15,18 @@
 <!-- Navbar -->
 <nav class="navbar" role="navigation" aria-label="Main navigation">
   <a class="navbar-brand" href="{{ url_for('main.index') }}" aria-label="SchoolBell home">
-    <span aria-hidden="true">🔔</span> SchoolBell
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="22" height="22"
+         aria-hidden="true" style="vertical-align:middle;flex-shrink:0">
+      <defs>
+        <linearGradient id="nb-g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#818CF8"/>
+          <stop offset="100%" stop-color="#FBBF24"/>
+        </linearGradient>
+      </defs>
+      <path d="M16 2 L19 12 L29 16 L19 20 L16 30 L13 20 L3 16 L13 12 Z" fill="url(#nb-g)"/>
+      <circle cx="16" cy="16" r="2.5" fill="white" opacity="0.55"/>
+    </svg>
+    SchoolBell
   </a>
   <div class="navbar-spacer"></div>
   {% if current_user.is_authenticated %}
