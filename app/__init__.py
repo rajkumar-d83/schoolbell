@@ -25,6 +25,12 @@ def create_app(config_name='development'):
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level or logging.INFO)
 
+    # Register FIRST — before CSRF — so we see every request immediately
+    @app.before_request
+    def log_every_request():
+        from flask import request
+        app.logger.info(f"[REQ] {request.method} {request.path}")
+
     db.init_app(app)
     login_manager.init_app(app)
     bcrypt.init_app(app)
@@ -41,11 +47,6 @@ def create_app(config_name='development'):
             if isinstance(dbapi_conn, sqlite3.Connection):
                 dbapi_conn.execute('PRAGMA journal_mode=WAL')
                 dbapi_conn.execute('PRAGMA synchronous=NORMAL')
-
-    @app.before_request
-    def log_every_request():
-        from flask import request
-        app.logger.info(f"[REQ] {request.method} {request.path}")
 
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp
