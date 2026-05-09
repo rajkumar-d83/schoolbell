@@ -47,7 +47,8 @@ class Subject(db.Model):
     grade      = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    chapters = db.relationship('Chapter', backref='subject', lazy=True)
+    chapters  = db.relationship('Chapter', backref='subject', lazy=True)
+    questions = db.relationship('Question', backref='subject', lazy=True)
 
     def __repr__(self):
         return f'<Subject {self.name} Grade {self.grade}>'
@@ -63,10 +64,13 @@ class Chapter(db.Model):
     pdf_filename   = db.Column(db.String(300), nullable=True)
     pdf_text       = db.Column(db.Text, nullable=True)
     is_processed   = db.Column(db.Boolean, default=False)
+    cheatsheet     = db.Column(db.Text, nullable=True)
     uploaded_at    = db.Column(db.DateTime, default=datetime.utcnow)
     uploaded_by    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
-    questions      = db.relationship('Question', backref='chapter', lazy=True)
+    # Questions are NOT cascade-deleted; chapter_id is set to NULL instead.
+    questions      = db.relationship('Question', backref='chapter', lazy=True,
+                                     foreign_keys='Question.chapter_id')
     quiz_sessions  = db.relationship('QuizSession', backref='chapter', lazy=True)
     teach_sessions = db.relationship('TeachSession', backref='chapter', lazy=True)
 
@@ -78,7 +82,10 @@ class Question(db.Model):
     __tablename__ = 'questions'
 
     id             = db.Column(db.Integer, primary_key=True)
-    chapter_id     = db.Column(db.Integer, db.ForeignKey('chapters.id'), nullable=False)
+    # subject_id is always set — survives chapter deletion
+    subject_id     = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    # chapter_id becomes NULL when the chapter is deleted
+    chapter_id     = db.Column(db.Integer, db.ForeignKey('chapters.id'), nullable=True)
     question_text  = db.Column(db.Text, nullable=False)
     option_a       = db.Column(db.String(500), nullable=False)
     option_b       = db.Column(db.String(500), nullable=False)

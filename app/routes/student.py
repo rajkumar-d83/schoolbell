@@ -208,3 +208,29 @@ def read_chapter(chapter_id):
 def performance():
     performance = get_student_performance(current_user.id)
     return render_template('student/performance.html', performance=performance)
+
+
+@student_bp.route('/subjects/<int:subject_id>/cheatsheet')
+@login_required
+@student_required
+def subject_cheatsheet(subject_id):
+    subject  = Subject.query.get_or_404(subject_id)
+    chapters = (Chapter.query
+                .filter_by(subject_id=subject_id)
+                .order_by(Chapter.chapter_number, Chapter.uploaded_at)
+                .all())
+
+    chapter_data = []
+    for ch in chapters:
+        cs = None
+        if ch.cheatsheet:
+            try:
+                cs = json.loads(ch.cheatsheet)
+            except Exception:
+                pass
+        chapter_data.append({'chapter': ch, 'cheatsheet': cs})
+
+    return render_template('shared/cheatsheet.html',
+                           subject=subject,
+                           chapter_data=chapter_data,
+                           is_parent=False)

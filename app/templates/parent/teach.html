@@ -3,10 +3,8 @@
 
 {% block extra_head %}
 <style>
-  /* Override base layout for fullscreen teaching mode */
   body { overflow: hidden; }
-  .navbar { position: sticky; top: 0; z-index: 200; }
-  main { padding: 0 !important; }
+  main { padding: 0 !important; animation: none; }
 </style>
 {% endblock %}
 
@@ -62,13 +60,14 @@
       <label class="teach-label">📓 Teaching Notes</label>
       <textarea class="teach-notes" id="teach-notes"
                 placeholder="Type notes here… They will auto-save when you click away."
-                rows="5">{{ '' }}</textarea>
+                rows="5" maxlength="5000">{{ '' }}</textarea>
       <div class="notes-status" id="notes-status"></div>
     </div>
 
     <!-- Questions to Cover (collapsible) -->
     <div class="teach-section">
-      <button class="collapsible-toggle" onclick="toggleQuestions(this)">
+      <button class="collapsible-toggle" onclick="toggleQuestions(this)"
+              aria-expanded="true" aria-controls="questions-list">
         ❓ Questions to Cover <span id="q-arrow">▼</span>
       </button>
       <div class="questions-list" id="questions-list">
@@ -100,8 +99,10 @@
         Generate Questions First →
       </a>
       {% endif %}
-      <a href="{{ url_for('parent.view_questions', chapter_id=chapter.id) }}"
-         class="back-link mt-1">← Back to Chapter</a>
+      <a href="{{ url_for('parent.subject_chapters', subject_id=subject.id) }}"
+         class="back-link mt-1">← Back to Chapters</a>
+      <a href="{{ url_for('parent.subjects') }}"
+         class="back-link">← Back to Subjects</a>
     </div>
 
   </div><!-- /teach-panel -->
@@ -218,11 +219,12 @@ function saveStudentChoice() {
 
 // ── Questions collapsible ─────────────────────────────────────────────────────
 function toggleQuestions(btn) {
-  const list = document.getElementById('questions-list');
-  const arrow = document.getElementById('q-arrow');
+  const list   = document.getElementById('questions-list');
+  const arrow  = document.getElementById('q-arrow');
   const isOpen = list.style.display !== 'none';
   list.style.display = isOpen ? 'none' : 'block';
-  arrow.textContent = isOpen ? '▶' : '▼';
+  arrow.textContent  = isOpen ? '▶' : '▼';
+  btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
 }
 </script>
 {% endblock %}

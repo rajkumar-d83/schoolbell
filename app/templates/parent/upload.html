@@ -62,10 +62,19 @@
 </div>
 
 <script>
-const input = document.getElementById('pdf-input');
+const input  = document.getElementById('pdf-input');
 const chosen = document.getElementById('file-chosen');
+const MAX_MB = 16;
 input.addEventListener('change', () => {
-  chosen.textContent = input.files[0] ? '📎 ' + input.files[0].name : '';
+  const file = input.files[0];
+  if (!file) { chosen.textContent = ''; return; }
+  if (file.size > MAX_MB * 1024 * 1024) {
+    alert('File too large! Maximum size is ' + MAX_MB + ' MB. Please choose a smaller PDF.');
+    input.value      = '';
+    chosen.textContent = '';
+    return;
+  }
+  chosen.textContent = '📎 ' + file.name;
 });
 </script>
 {% endblock %}

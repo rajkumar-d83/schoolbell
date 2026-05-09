@@ -92,3 +92,49 @@ Return only the JSON array, nothing else."""
     except Exception as e:
         print(f"Claude API error: {e}")
         return []
+
+
+def generate_cheatsheet(pdf_text, chapter_title, subject_name, grade):
+    """Generate a structured one-page cheatsheet for a chapter using Claude."""
+    try:
+        client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+
+        prompt = f"""You are a friendly CBSE/NCERT teacher creating a one-page cheatsheet for Grade {grade} students.
+
+Subject: {subject_name}
+Chapter: {chapter_title}
+
+Content:
+{pdf_text[:8000]}
+
+Create a concise cheatsheet that fits on one page. Return ONLY a valid JSON object with exactly these keys:
+- "overview": 2-3 sentence summary of what this chapter is about (simple, friendly language for the grade level)
+- "key_concepts": array of objects with "term" and "definition" — max 8 items, definitions must be 1 short sentence
+- "key_facts": array of strings — important facts, dates, names, formulas, or rules — max 8 items, keep each short
+- "remember": array of strings — helpful tips, memory tricks, or common mistakes to avoid — max 4 items
+
+Rules:
+- Use simple, encouraging language a Grade {grade} student can understand
+- Keep every item brief (one sentence)
+- Make it memorable and practical
+- Return ONLY the JSON object, no markdown fences, no extra text"""
+
+        with client.messages.stream(
+            model="claude-sonnet-4-6",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        ) as stream:
+            response_text = stream.get_final_text().strip()
+
+        if response_text.startswith('```'):
+            lines = response_text.split('\n')
+            response_text = '\n'.join(lines[1:-1])
+
+        return json.loads(response_text)
+
+    except json.JSONDecodeError as e:
+        print(f"Cheatsheet JSON parse error: {e}")
+        return None
+    except Exception as e:
+        print(f"Cheatsheet generation error: {e}")
+        return None

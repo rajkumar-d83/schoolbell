@@ -7,7 +7,10 @@
   <p class="subtitle">Grade {{ subject.grade }} &nbsp;|&nbsp; {{ chapters|length }} chapter(s)</p>
 </div>
 
-<a href="{{ url_for('student.subjects') }}" class="btn btn-outline mb-2">← Back to Subjects</a>
+<div style="display:flex; gap:.75rem; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap;">
+  <a href="{{ url_for('student.subjects') }}" class="btn btn-outline">← Back to Subjects</a>
+  <a href="{{ url_for('student.subject_cheatsheet', subject_id=subject.id) }}" class="btn btn-outline">📋 Cheatsheet</a>
+</div>
 
 {% if chapters %}
 <div class="table-wrap">

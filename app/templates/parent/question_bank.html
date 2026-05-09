@@ -1,0 +1,155 @@
+{% extends "shared/base.html" %}
+{% block title %}Question Bank – {{ subject.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>🗂️ Question Bank</h1>
+  <p class="subtitle">{{ subject.name }} &nbsp;·&nbsp; Grade {{ subject.grade }}</p>
+</div>
+
+<div style="display:flex; gap:.75rem; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap;">
+  <a href="{{ url_for('parent.subject_chapters', subject_id=subject.id) }}" class="btn btn-outline">← Chapters</a>
+</div>
+
+<!-- Summary pills -->
+<div style="display:flex; gap:.75rem; flex-wrap:wrap; margin-bottom:1.5rem;">
+  <div style="background:var(--emerald-bg); border:1px solid rgba(52,211,153,.25); border-radius:var(--radius); padding:.6rem 1.1rem; display:flex; gap:.6rem; align-items:center;">
+    <span style="font-size:1.2rem;">✅</span>
+    <div>
+      <div style="font-size:1.3rem; font-weight:800; color:var(--emerald);">{{ linked_count }}</div>
+      <div style="font-size:.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px;">Linked to a chapter</div>
+    </div>
+  </div>
+  {% if orphaned_count > 0 %}
+  <div style="background:var(--amber-bg); border:1px solid rgba(251,191,36,.25); border-radius:var(--radius); padding:.6rem 1.1rem; display:flex; gap:.6rem; align-items:center;">
+    <span style="font-size:1.2rem;">🔗</span>
+    <div>
+      <div style="font-size:1.3rem; font-weight:800; color:var(--amber);">{{ orphaned_count }}</div>
+      <div style="font-size:.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px;">Orphaned (chapter deleted)</div>
+    </div>
+  </div>
+  {% endif %}
+  <div style="background:var(--indigo-bg); border:1px solid rgba(129,140,248,.25); border-radius:var(--radius); padding:.6rem 1.1rem; display:flex; gap:.6rem; align-items:center;">
+    <span style="font-size:1.2rem;">❓</span>
+    <div>
+      <div style="font-size:1.3rem; font-weight:800; color:var(--indigo);">{{ all_questions|length }}</div>
+      <div style="font-size:.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px;">Total questions</div>
+    </div>
+  </div>
+</div>
+
+{% if orphaned_count > 0 %}
+<div class="ai-note" style="background:var(--amber-bg); border-color:rgba(251,191,36,.25); color:var(--amber); margin-bottom:1.25rem;">
+  <span class="ai-icon">💡</span>
+  <span>{{ orphaned_count }} question(s) are orphaned — their chapter was deleted but the questions were kept.
+  Use the <strong>Re-link</strong> button to attach them to an existing chapter, or leave them here for reference.</span>
+</div>
+{% endif %}
+
+{% if all_questions %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Question</th>
+        <th>Answer</th>
+        <th>Chapter</th>
+        <th class="hide-mobile">Difficulty</th>
+        <th class="hide-mobile">Topic</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for q in all_questions %}
+      <tr>
+        <td style="color:var(--text-muted); font-weight:600; width:36px;">{{ loop.index }}</td>
+        <td style="max-width:340px; color:var(--text-primary);">{{ q.question_text }}</td>
+        <td>
+          <span class="answer-tag">{{ q.correct_answer }}</span>
+        </td>
+        <td>
+          {% if q.chapter_id %}
+            <span class="badge badge-success">{{ q.chapter.title }}</span>
+          {% else %}
+            <span class="badge badge-warning">Orphaned</span>
+          {% endif %}
+        </td>
+        <td class="hide-mobile">
+          <span class="badge {% if q.difficulty == 'easy' %}badge-success
+                             {% elif q.difficulty == 'hard' %}badge-danger
+                             {% else %}badge-info{% endif %}">
+            {{ q.difficulty }}
+          </span>
+        </td>
+        <td class="hide-mobile" style="font-size:.8rem; color:var(--text-muted);">{{ q.topic_tag or '—' }}</td>
+        <td>
+          {% if not q.chapter_id and chapters %}
+          <button class="btn btn-sm btn-outline"
+                  onclick="openRelink({{ q.id }}, '{{ q.question_text[:40]|e }}...')">
+            🔗 Re-link
+          </button>
+          {% elif not chapters %}
+          <span style="font-size:.75rem; color:var(--text-muted);">No chapters</span>
+          {% else %}
+          <span style="font-size:.75rem; color:var(--text-muted);">Linked ✓</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">🗂️</div>
+  <h3>No questions yet</h3>
+  <p>Generate questions from any chapter to build the bank.</p>
+</div>
+{% endif %}
+
+<!-- Re-link modal (lightweight) -->
+<div id="relink-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+     z-index:500; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+  <div style="background:var(--bg-surface); border:1px solid var(--border-hover);
+              border-top:1px solid rgba(129,140,248,.35);
+              border-radius:var(--radius-xl); padding:2rem; width:100%; max-width:440px;
+              box-shadow:var(--shadow-lg); margin:1rem;">
+    <h3 style="margin-bottom:.25rem; font-size:1.05rem; color:var(--text-primary);">🔗 Re-link Question</h3>
+    <p id="relink-preview" style="font-size:.82rem; color:var(--text-muted); margin-bottom:1.25rem;"></p>
+
+    <form method="POST" id="relink-form" action="">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label class="form-label" for="chapter-select">Choose a chapter to link to</label>
+        <select name="chapter_id" id="chapter-select" class="form-control" required>
+          <option value="">— Select chapter —</option>
+          {% for ch in chapters %}
+          <option value="{{ ch.id }}">{{ ch.chapter_number and ('#' ~ ch.chapter_number ~ ' – ') or '' }}{{ ch.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Link Question →</button>
+        <button type="button" class="btn btn-outline ml-1" onclick="closeRelink()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openRelink(questionId, preview) {
+  document.getElementById('relink-preview').textContent = preview;
+  document.getElementById('relink-form').action =
+    '/parent/questions/' + questionId + '/relink';
+  var overlay = document.getElementById('relink-overlay');
+  overlay.style.display = 'flex';
+}
+function closeRelink() {
+  document.getElementById('relink-overlay').style.display = 'none';
+}
+document.getElementById('relink-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeRelink();
+});
+</script>
+{% endblock %}

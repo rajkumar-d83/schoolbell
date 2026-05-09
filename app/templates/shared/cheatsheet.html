@@ -1,0 +1,125 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ subject.name }} Cheatsheet – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header {{ 'parent-header' if is_parent else 'student-header' }}">
+  <h1>📋 {{ subject.name }}</h1>
+  <p class="subtitle">Grade {{ subject.grade }} &nbsp;|&nbsp; Cheatsheet &nbsp;|&nbsp; {{ chapter_data|length }} chapter(s)</p>
+</div>
+
+<div class="cs-print-header">
+  <div class="cs-print-title">{{ subject.name }}</div>
+  <div class="cs-print-sub">Grade {{ subject.grade }} &nbsp;·&nbsp; Cheatsheet</div>
+</div>
+
+<div class="cs-toolbar no-print">
+  {% if is_parent %}
+  <a href="{{ url_for('parent.subject_chapters', subject_id=subject.id) }}" class="btn btn-outline">← Chapters</a>
+  {% else %}
+  <a href="{{ url_for('student.chapters', subject_id=subject.id) }}" class="btn btn-outline">← Chapters</a>
+  {% endif %}
+  <button onclick="window.print()" class="btn btn-outline">🖨️ Print All</button>
+</div>
+
+{% if not chapter_data %}
+<div class="empty-state">
+  <div class="empty-icon">📋</div>
+  <h3>No chapters yet</h3>
+  <p>Upload chapters first, then generate cheatsheets.</p>
+</div>
+{% endif %}
+
+{% for item in chapter_data %}
+<div class="cs-page">
+  <div class="cs-page-header">
+    <div class="cs-chapter-badge">Ch {{ item.chapter.chapter_number or loop.index }}</div>
+    <h2 class="cs-chapter-title">{{ item.chapter.title }}</h2>
+    {% if is_parent and not item.cheatsheet %}
+    <form method="POST"
+          action="{{ url_for('parent.generate_cheatsheet_chapter', chapter_id=item.chapter.id) }}"
+          style="margin-left:auto; flex-shrink:0;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-sm btn-primary cs-gen-btn">✨ Generate</button>
+    </form>
+    {% elif is_parent and item.cheatsheet %}
+    <form method="POST"
+          action="{{ url_for('parent.generate_cheatsheet_chapter', chapter_id=item.chapter.id) }}"
+          style="margin-left:auto; flex-shrink:0;"
+          title="Regenerate cheatsheet">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-sm btn-outline cs-gen-btn">↻ Regenerate</button>
+    </form>
+    {% endif %}
+  </div>
+
+  {% if item.cheatsheet %}
+  <div class="cs-body">
+    {% if item.cheatsheet.overview %}
+    <div class="cs-section cs-overview-section">
+      <div class="cs-label">Overview</div>
+      <p class="cs-overview-text">{{ item.cheatsheet.overview }}</p>
+    </div>
+    {% endif %}
+
+    <div class="cs-columns">
+      {% if item.cheatsheet.key_concepts %}
+      <div class="cs-section">
+        <div class="cs-label">Key Concepts</div>
+        <div class="cs-concepts">
+          {% for concept in item.cheatsheet.key_concepts %}
+          <div class="cs-concept-row">
+            <span class="cs-term">{{ concept.term }}</span>
+            <span class="cs-def">{{ concept.definition }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="cs-right-col">
+        {% if item.cheatsheet.key_facts %}
+        <div class="cs-section">
+          <div class="cs-label">Key Facts</div>
+          <ul class="cs-list">
+            {% for fact in item.cheatsheet.key_facts %}
+            <li>{{ fact }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        {% if item.cheatsheet.remember %}
+        <div class="cs-section cs-tips-section">
+          <div class="cs-label">💡 Remember</div>
+          <ul class="cs-list cs-tips-list">
+            {% for tip in item.cheatsheet.remember %}
+            <li>{{ tip }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="cs-empty">
+    {% if is_parent %}
+    <p>Click <strong>Generate</strong> to create the cheatsheet for this chapter.</p>
+    {% else %}
+    <p>Cheatsheet not generated yet — ask your parent to generate it.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+
+<script>
+document.querySelectorAll('.cs-gen-btn').forEach(function(btn) {
+  btn.closest('form').addEventListener('submit', function() {
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating…';
+  });
+});
+</script>
+{% endblock %}

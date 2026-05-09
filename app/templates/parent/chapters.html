@@ -10,6 +10,14 @@
 <div style="display:flex; gap:.75rem; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap;">
   <a href="{{ url_for('parent.subjects') }}" class="btn btn-outline">← Back to Subjects</a>
   <a href="{{ url_for('parent.upload') }}" class="btn btn-primary">⬆️ Upload New Chapter</a>
+  <a href="{{ url_for('parent.question_bank', subject_id=subject.id) }}" class="btn btn-outline"
+     title="View all questions for this subject, including those from deleted chapters">
+    🗂️ Question Bank
+  </a>
+  <a href="{{ url_for('parent.subject_cheatsheet', subject_id=subject.id) }}" class="btn btn-outline"
+     title="View and generate cheatsheets for all chapters">
+    📋 Cheatsheet
+  </a>
 </div>
 
 {% if chapters %}
@@ -33,7 +41,8 @@
           <span class="ch-title-display" id="title-{{ chapter.id }}">
             <strong>{{ chapter.title }}</strong>
             <button class="btn-icon" onclick="showRename({{ chapter.id }}, '{{ chapter.title|e }}', '{{ chapter.chapter_number or '' }}')"
-                    title="Rename" style="margin-left:.4rem; opacity:.5; cursor:pointer; background:none; border:none; font-size:.9rem;">✏️</button>
+                    title="Rename" aria-label="Rename chapter"
+                    style="margin-left:.4rem; opacity:.5; cursor:pointer; background:none; border:none; font-size:.9rem;">✏️</button>
           </span>
           <form id="rename-{{ chapter.id }}"
                 method="POST"
@@ -82,7 +91,7 @@
             <form method="POST"
                   action="{{ url_for('parent.delete_chapter', chapter_id=chapter.id) }}"
                   style="display:inline"
-                  onsubmit="return confirm('Delete chapter &quot;{{ chapter.title }}&quot;? All questions and quiz history for this chapter will be permanently removed.')">
+                  data-confirm="Delete chapter &quot;{{ chapter.title }}&quot;? Questions will be kept in the Question Bank. Quiz history for this chapter will be removed.">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-danger">Delete</button>
             </form>

@@ -106,7 +106,6 @@
         </div>
         {% endif %}
 
-        <!-- Explanation always shown -->
         {% if attempt.question.explanation %}
         <div class="review-explanation">
           💡 {{ attempt.question.explanation }}
@@ -122,8 +121,9 @@
 
 {% if ok %}
 <script>
-/* ── Lightweight confetti ──────────────────────────────── */
 (function() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
   const canvas = document.getElementById('confetti-canvas');
   const ctx    = canvas.getContext('2d');
   canvas.width  = window.innerWidth;
@@ -131,17 +131,19 @@
 
   const COLORS = ['#2e7d32','#e65100','#1a3a5c','#f57f17','#c62828','#1565c0'];
   const pieces = Array.from({length: 80}, () => ({
-    x:    Math.random() * canvas.width,
-    y:    Math.random() * -canvas.height,
-    r:    4 + Math.random() * 6,
-    color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    speed: 2 + Math.random() * 4,
-    spin:  (Math.random() - .5) * .2,
-    angle: Math.random() * Math.PI * 2,
+    x:      Math.random() * canvas.width,
+    y:      Math.random() * -canvas.height,
+    r:      4 + Math.random() * 6,
+    color:  COLORS[Math.floor(Math.random() * COLORS.length)],
+    speed:  2 + Math.random() * 4,
+    spin:   (Math.random() - .5) * .2,
+    angle:  Math.random() * Math.PI * 2,
     wobble: Math.random() * Math.PI * 2,
   }));
 
+  let rafId = null;
   let frame = 0;
+
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     pieces.forEach(p => {
@@ -158,10 +160,23 @@
       ctx.restore();
     });
     frame++;
-    if (frame < 240) requestAnimationFrame(draw);   // run ~4 seconds then stop
-    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (frame < 240) {
+      rafId = requestAnimationFrame(draw);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
   }
-  draw();
+
+  rafId = requestAnimationFrame(draw);
+
+  /* Cancel when user leaves the page */
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  });
 })();
 </script>
 {% endif %}

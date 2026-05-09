@@ -58,9 +58,10 @@
 
 <script>
 function showSpinner() {
+  var btn = document.getElementById('gen-btn');
+  btn.disabled = true;   /* disable immediately to prevent double-submit */
   setTimeout(() => {
     document.getElementById('spinner').style.display = 'flex';
-    document.getElementById('gen-btn').disabled = true;
   }, 100);
 }
 </script>

@@ -25,8 +25,8 @@
         <th>#</th>
         <th>Question</th>
         <th>Answer</th>
-        <th>Difficulty</th>
-        <th>Topic</th>
+        <th class="hide-mobile">Difficulty</th>
+        <th class="hide-mobile">Topic</th>
       </tr>
     </thead>
     <tbody>
@@ -43,14 +43,14 @@
             {% else %}{{ q.option_d }}{% endif %}
           </span>
         </td>
-        <td>
+        <td class="hide-mobile">
           <span class="badge {% if q.difficulty == 'easy' %}badge-success
                              {% elif q.difficulty == 'hard' %}badge-danger
                              {% else %}badge-info{% endif %}">
             {{ q.difficulty }}
           </span>
         </td>
-        <td class="topic-tag-cell">{{ q.topic_tag or '—' }}</td>
+        <td class="topic-tag-cell hide-mobile">{{ q.topic_tag or '—' }}</td>
       </tr>
       {% endfor %}
     </tbody>

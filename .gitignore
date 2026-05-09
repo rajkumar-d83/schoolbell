@@ -28,6 +28,8 @@ ncert_books/*.pdf
 # Database
 *.db
 *.sqlite3
+*.db-shm
+*.db-wal
 
 # Claude Code memory
 .claude/

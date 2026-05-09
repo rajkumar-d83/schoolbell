@@ -28,31 +28,39 @@ def login():
         else:
             flash('Invalid username or password.', 'danger')
 
-    # Unclaimed students for the picker (up to 10)
+    has_unclaimed = User.query.filter_by(
+        role='student', is_active=True, is_claimed=False).first() is not None
+    return render_template('auth/login.html', has_unclaimed=has_unclaimed)
+
+
+@auth_bp.route('/claim', methods=['GET', 'POST'])
+def claim():
+    """GET: show the student registration picker.
+       POST: student picks an unclaimed account, sets grade, and logs in."""
+    if current_user.is_authenticated:
+        return redirect(url_for('student.dashboard'))
+
     unclaimed = (User.query
                  .filter_by(role='student', is_active=True, is_claimed=False)
                  .order_by(User.name)
-                 .limit(10)
                  .all())
 
-    return render_template('auth/login.html', unclaimed=unclaimed)
+    if request.method == 'GET':
+        return render_template('auth/claim.html', unclaimed=unclaimed)
 
-
-@auth_bp.route('/claim', methods=['POST'])
-def claim():
-    """Student picks an unclaimed account, sets grade, and logs in."""
+    # POST — process the claim
     student_id = request.form.get('student_id', type=int)
     grade      = request.form.get('grade', type=int)
 
     if not student_id or not grade:
-        flash('Please select a name and a grade.', 'danger')
-        return redirect(url_for('auth.login'))
+        flash('Please select your name and grade.', 'danger')
+        return render_template('auth/claim.html', unclaimed=unclaimed)
 
     student = User.query.filter_by(id=student_id, role='student',
                                    is_active=True, is_claimed=False).first()
     if not student:
         flash('That account is no longer available. Please pick another.', 'warning')
-        return redirect(url_for('auth.login'))
+        return render_template('auth/claim.html', unclaimed=unclaimed)
 
     student.grade      = grade
     student.is_claimed = True

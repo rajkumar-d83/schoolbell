@@ -1,0 +1,110 @@
+{% extends "shared/base.html" %}
+{% block title %}New Student – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">🎓</div>
+    <div class="login-title">First Time Here?</div>
+
+    {% if unclaimed %}
+    <p style="text-align:center; font-size:.875rem; color:var(--text-secondary); margin-bottom:1.5rem; margin-top:-.75rem;">
+      Pick your name and set your grade to get started.
+    </p>
+
+    <form method="POST" action="{{ url_for('auth.claim') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="form-group">
+        <label class="form-label" for="student-pick">Your name</label>
+        <select name="student_id" id="student-pick" class="form-control"
+                aria-label="Choose your name" onchange="showPw(this)" required>
+          <option value="">— Select your name —</option>
+          {% for s in unclaimed %}
+          <option value="{{ s.id }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div id="pw-box" style="display:none; margin-bottom:1.1rem;
+           background:var(--emerald-bg); border:1px solid rgba(52,211,153,.25);
+           border-radius:var(--radius); padding:.7rem 1rem; font-size:.9rem; color:var(--emerald);">
+        Your password is:
+        <button type="button" onclick="toggleReveal()"
+                style="background:none; border:none; cursor:pointer; font-size:inherit;
+                       color:inherit; padding:0; margin-left:.3rem;"
+                aria-label="Show or hide password">
+          <strong id="pw-display"
+                  style="filter:blur(5px); transition:filter .2s; user-select:none;"></strong>
+          <span id="pw-hint"
+                style="font-size:.78rem; opacity:.7; margin-left:.4rem;">(tap to reveal)</span>
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="grade-pick">Your grade</label>
+        <select name="grade" id="grade-pick" class="form-control"
+                aria-label="Select your grade" required>
+          <option value="">— Select Grade —</option>
+          {% for g in range(1, 11) %}
+          <option value="{{ g }}">Grade {{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-full"
+              style="background:var(--emerald); border-color:var(--emerald);">
+        Start Learning →
+      </button>
+    </form>
+
+    {% else %}
+    <div class="empty-state" style="padding:2rem 1rem;">
+      <div class="empty-icon">🎒</div>
+      <h3>No accounts waiting</h3>
+      <p>Ask your parent to add a student account for you first.</p>
+    </div>
+    {% endif %}
+
+    <div style="margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border); text-align:center;">
+      <a href="{{ url_for('auth.login') }}"
+         style="font-size:.875rem; color:var(--text-muted);">
+        ← Back to login
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+const STUDENT_PASSWORDS = {
+  {% for s in unclaimed %}
+  {{ s.id }}: {{ s.display_password | tojson }}{% if not loop.last %},{% endif %}
+  {% endfor %}
+};
+
+let pwRevealed = false;
+
+function showPw(sel) {
+  const id   = parseInt(sel.value, 10);
+  const box  = document.getElementById('pw-box');
+  const disp = document.getElementById('pw-display');
+  if (id && STUDENT_PASSWORDS[id]) {
+    disp.textContent  = STUDENT_PASSWORDS[id];
+    disp.style.filter = 'blur(5px)';
+    document.getElementById('pw-hint').textContent = '(tap to reveal)';
+    pwRevealed = false;
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+function toggleReveal() {
+  const disp = document.getElementById('pw-display');
+  const hint = document.getElementById('pw-hint');
+  pwRevealed        = !pwRevealed;
+  disp.style.filter = pwRevealed ? 'none' : 'blur(5px)';
+  hint.textContent  = pwRevealed ? '(tap to hide)' : '(tap to reveal)';
+}
+</script>
+{% endblock %}

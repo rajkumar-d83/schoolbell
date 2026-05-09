@@ -20,7 +20,12 @@ class DevelopmentConfig(Config):
     )
 
 class ProductionConfig(Config):
-    DEBUG = False
+    DEBUG   = False
+    TESTING = False
+    SESSION_COOKIE_SECURE   = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    WTF_CSRF_TIME_LIMIT     = 3600
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         'DATABASE_URL',
         f'sqlite:///{os.path.join(_BASE_DIR, "schoolbell.db")}'

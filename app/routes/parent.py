@@ -5,10 +5,11 @@ from functools import wraps
 from app import db
 from app.models.models import (User, Subject, Chapter, Question,
                                 QuizSession, QuestionAttempt, TeachSession)
-from app.services.pdf_service import extract_pdf_text, generate_questions_from_text
+from app.services.pdf_service import (extract_pdf_text, generate_questions_from_text,
+                                       generate_cheatsheet as make_cheatsheet)
 import fitz as _fitz_lib
 from app.services.analytics import get_student_performance
-import os, re, shutil, uuid
+import os, re, shutil, uuid, json
 
 parent_bp = Blueprint('parent', __name__, url_prefix='/parent')
 
@@ -219,7 +220,8 @@ def delete_chapter(chapter_id):
 
 
 def _delete_chapter_cascade(chapter):
-    """Delete a chapter and all its related data (no commit)."""
+    """Delete a chapter.  Questions are KEPT — their chapter_id is set to NULL
+    so they remain in the subject's question bank."""
     # Remove PDF file from disk
     if chapter.pdf_filename:
         filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], chapter.pdf_filename)
@@ -227,7 +229,7 @@ def _delete_chapter_cascade(chapter):
             os.remove(filepath)
         except OSError:
             pass
-    # Delete in dependency order using raw SQL to avoid ORM cache staleness
+    # Quiz history goes away with the chapter (attempts → sessions)
     db.session.execute(
         db.text('DELETE FROM question_attempts WHERE session_id IN '
                 '(SELECT id FROM quiz_sessions WHERE chapter_id = :cid)'),
@@ -235,7 +237,11 @@ def _delete_chapter_cascade(chapter):
     )
     db.session.execute(db.text('DELETE FROM quiz_sessions WHERE chapter_id = :cid'), {'cid': chapter.id})
     db.session.execute(db.text('DELETE FROM teach_sessions WHERE chapter_id = :cid'), {'cid': chapter.id})
-    db.session.execute(db.text('DELETE FROM questions WHERE chapter_id = :cid'), {'cid': chapter.id})
+    # Orphan questions — keep them, just unlink from the chapter
+    db.session.execute(
+        db.text('UPDATE questions SET chapter_id = NULL WHERE chapter_id = :cid'),
+        {'cid': chapter.id}
+    )
     db.session.execute(db.text('DELETE FROM chapters WHERE id = :cid'), {'cid': chapter.id})
     db.session.expire_all()
 
@@ -316,6 +322,7 @@ def generate_questions(chapter_id):
                     continue
                 db.session.add(Question(
                     chapter_id=chapter_id,
+                    subject_id=chapter.subject_id,
                     question_text=q['question_text'],
                     option_a=q['option_a'],
                     option_b=q['option_b'],
@@ -592,3 +599,96 @@ def bulk_import():
         return redirect(url_for('parent.subjects'))
 
     return render_template('parent/bulk_import.html', ncert_folder=ncert_folder)
+
+
+# ── Question Bank ───────────────────────────────────────────────────────────────
+@parent_bp.route('/subjects/<int:subject_id>/question-bank')
+@login_required
+@parent_required
+def question_bank(subject_id):
+    subject  = Subject.query.get_or_404(subject_id)
+    chapters = Chapter.query.filter_by(subject_id=subject_id).order_by(Chapter.chapter_number).all()
+
+    # All questions for this subject, regardless of chapter status
+    all_questions = (Question.query
+                     .filter_by(subject_id=subject_id)
+                     .order_by(Question.chapter_id.nullslast(), Question.id)
+                     .all())
+
+    # Group for summary
+    linked   = [q for q in all_questions if q.chapter_id is not None]
+    orphaned = [q for q in all_questions if q.chapter_id is None]
+
+    return render_template('parent/question_bank.html',
+                           subject=subject,
+                           chapters=chapters,
+                           all_questions=all_questions,
+                           linked_count=len(linked),
+                           orphaned_count=len(orphaned))
+
+
+@parent_bp.route('/questions/<int:question_id>/relink', methods=['POST'])
+@login_required
+@parent_required
+def relink_question(question_id):
+    question   = Question.query.get_or_404(question_id)
+    chapter_id = request.form.get('chapter_id', type=int)
+    chapter    = Chapter.query.get_or_404(chapter_id)
+
+    if chapter.subject_id != question.subject_id:
+        flash('Chapter belongs to a different subject.', 'danger')
+        return redirect(url_for('parent.question_bank', subject_id=question.subject_id))
+
+    question.chapter_id = chapter_id
+    db.session.commit()
+    flash(f'Question re-linked to "{chapter.title}".', 'success')
+    return redirect(url_for('parent.question_bank', subject_id=question.subject_id))
+
+
+# ── Cheatsheet ─────────────────────────────────────────────────────────────────
+@parent_bp.route('/chapters/<int:chapter_id>/generate-cheatsheet', methods=['POST'])
+@login_required
+@parent_required
+def generate_cheatsheet_chapter(chapter_id):
+    chapter = Chapter.query.get_or_404(chapter_id)
+    subject = Subject.query.get_or_404(chapter.subject_id)
+
+    if not chapter.pdf_text:
+        flash('No PDF text available — please re-upload the PDF.', 'danger')
+        return redirect(url_for('parent.subject_cheatsheet', subject_id=subject.id))
+
+    result = make_cheatsheet(chapter.pdf_text, chapter.title, subject.name, subject.grade)
+    if result:
+        chapter.cheatsheet = json.dumps(result)
+        db.session.commit()
+        flash(f'Cheatsheet generated for "{chapter.title}".', 'success')
+    else:
+        flash('Cheatsheet generation failed. Please try again.', 'danger')
+
+    return redirect(url_for('parent.subject_cheatsheet', subject_id=subject.id))
+
+
+@parent_bp.route('/subjects/<int:subject_id>/cheatsheet')
+@login_required
+def subject_cheatsheet(subject_id):
+    """Subject-level cheatsheet — one section per chapter. Accessible to both roles."""
+    subject  = Subject.query.get_or_404(subject_id)
+    chapters = (Chapter.query
+                .filter_by(subject_id=subject_id)
+                .order_by(Chapter.chapter_number, Chapter.uploaded_at)
+                .all())
+
+    chapter_data = []
+    for ch in chapters:
+        cs = None
+        if ch.cheatsheet:
+            try:
+                cs = json.loads(ch.cheatsheet)
+            except Exception:
+                pass
+        chapter_data.append({'chapter': ch, 'cheatsheet': cs})
+
+    return render_template('shared/cheatsheet.html',
+                           subject=subject,
+                           chapter_data=chapter_data,
+                           is_parent=(current_user.role == 'parent'))

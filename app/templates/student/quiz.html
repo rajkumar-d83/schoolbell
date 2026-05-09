@@ -82,19 +82,32 @@ let timeLeft       = TOTAL_TIME;
 let timerInterval;
 const timerEl      = document.getElementById('quiz-timer');
 const startTime    = Date.now();
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ── Timer ───────────────────────────────────────────────── */
-function startTimer() {
-  timerInterval = setInterval(() => {
-    timeLeft--;
-    timerEl.textContent = '⏱ ' + timeLeft + 's';
-    if (timeLeft <= 10) timerEl.classList.add('timer-danger');
-    if (timeLeft <= 0) {
-      clearInterval(timerInterval);
-      submitAnswer();          // auto-submit when time runs out
-    }
-  }, 1000);
+/* ── Timer tick ──────────────────────────────────────────── */
+function tick() {
+  timeLeft--;
+  timerEl.textContent = '⏱ ' + timeLeft + 's';
+  if (timeLeft <= 10) timerEl.classList.add('timer-danger');
+  if (timeLeft <= 0) {
+    clearInterval(timerInterval);
+    submitAnswer();
+  }
 }
+
+function startTimer() {
+  timerInterval = setInterval(tick, 1000);
+}
+
+/* ── Pause timer while page is hidden (e.g. device sleep) ── */
+document.addEventListener('visibilitychange', () => {
+  if (answered) return;
+  if (document.hidden) {
+    clearInterval(timerInterval);
+  } else {
+    timerInterval = setInterval(tick, 1000);
+  }
+});
 
 /* ── Option selection ────────────────────────────────────── */
 function selectOption(btn) {
@@ -124,19 +137,25 @@ function submitAnswer() {
   fd.append('chosen_answer',   selectedAnswer || '');
   fd.append('time_taken',      timeTaken);
 
+  const controller = new AbortController();
+  const timeout    = setTimeout(() => controller.abort(), 10000);
+
   fetch('{{ url_for("student.submit_answer") }}', {
     method:  'POST',
     headers: { 'X-Requested-With': 'XMLHttpRequest' },
-    body:    fd
+    body:    fd,
+    signal:  controller.signal
   })
-  .then(r => r.json())
+  .then(r => { clearTimeout(timeout); return r.json(); })
   .then(data => showFeedback(data))
-  .catch(() => { window.location = '{{ url_for("student.subjects") }}'; });
+  .catch(() => {
+    clearTimeout(timeout);
+    window.location = '{{ url_for("student.subjects") }}';
+  });
 }
 
 /* ── Show feedback ───────────────────────────────────────── */
 function showFeedback(data) {
-  // Colour the option buttons
   document.querySelectorAll('.option-btn').forEach(btn => {
     btn.disabled = true;
     btn.classList.remove('selected');
@@ -147,7 +166,6 @@ function showFeedback(data) {
     }
   });
 
-  // Hide submit, reveal feedback
   document.getElementById('submit-area').style.display = 'none';
   const panel = document.getElementById('feedback-panel');
   panel.style.display = 'block';
@@ -165,12 +183,10 @@ function showFeedback(data) {
       'The correct answer is <strong>' + data.correct_answer + '</strong> — don\'t worry, keep going!';
   }
 
-  // Explanation (always)
   if (data.explanation) {
     document.getElementById('feedback-explanation').textContent = data.explanation;
   }
 
-  // Next / Results button
   const nextBtn = document.getElementById('next-btn');
   nextBtn.href        = data.next_url;
   nextBtn.textContent = data.is_last ? '🏁 See My Results!' : 'Next Question →';
@@ -189,8 +205,9 @@ function pickPraise() {
   return praises[Math.floor(Math.random() * praises.length)];
 }
 
-/* ── Burst animation ─────────────────────────────────────── */
+/* ── Burst animation (skipped for reduced-motion users) ───── */
 function fireBurst() {
+  if (reducedMotion) return;
   const burst = document.getElementById('star-burst');
   burst.style.display = 'block';
   burst.classList.add('burst-animate');

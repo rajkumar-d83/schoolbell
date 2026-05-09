@@ -23,7 +23,7 @@
         <form method="POST"
               action="{{ url_for('parent.delete_subject', subject_id=subject.id) }}"
               style="display:inline"
-              onsubmit="return confirm('Delete subject &quot;{{ subject.name }}&quot; and ALL its chapters? This cannot be undone.')">
+              data-confirm="Delete subject &quot;{{ subject.name }}&quot; and ALL its chapters? This cannot be undone.">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-sm btn-danger ml-1">Delete</button>
         </form>

@@ -3,51 +3,6 @@
 
 {% block content %}
 <div class="login-wrap">
-
-  <!-- ── Student Picker ──────────────────────────────────────── -->
-  {% if unclaimed %}
-  <div class="login-card" style="margin-bottom:1.5rem;">
-    <div class="login-logo">🎓</div>
-    <div class="login-title" style="font-size:1.1rem;">New Student? Pick your name</div>
-
-    <form method="POST" action="{{ url_for('auth.claim') }}" id="claim-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-      <div class="form-group">
-        <label class="form-label">Choose your name</label>
-        <select name="student_id" id="student-pick" class="form-control" onchange="showPw(this)" required>
-          <option value="">— Select your name —</option>
-          {% for s in unclaimed %}
-          <option value="{{ s.id }}" data-pw="{{ s.display_password }}">{{ s.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div id="pw-box" style="display:none; margin-bottom:1rem;
-           background:#e8f5e9; border:1px solid #2e7d32; border-radius:6px;
-           padding:.6rem .9rem; font-size:.95rem; color:#1b5e20;">
-        Your password is: <strong id="pw-display"></strong>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Select your Grade</label>
-        <select name="grade" class="form-control" required>
-          <option value="">— Select Grade —</option>
-          {% for g in range(1, 11) %}
-          <option value="{{ g }}">Grade {{ g }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <button type="submit" class="btn btn-primary w-full"
-              style="background:var(--student-green,#2e7d32);">
-        Start Learning →
-      </button>
-    </form>
-  </div>
-  {% endif %}
-
-  <!-- ── Regular Login ───────────────────────────────────────── -->
   <div class="login-card">
     <div class="login-logo">🔔</div>
     <div class="login-title">SchoolBell</div>
@@ -55,36 +10,38 @@
     <form method="POST" action="{{ url_for('auth.login') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group">
-        <label class="form-label">Username</label>
-        <input type="text" name="username" class="form-control"
-               placeholder="Enter your username" required autofocus>
+        <label class="form-label" for="username">Username</label>
+        <input type="text" name="username" id="username" class="form-control"
+               placeholder="Enter your username" required autofocus autocomplete="username">
       </div>
       <div class="form-group">
-        <label class="form-label">Password</label>
-        <input type="password" name="password" class="form-control"
-               placeholder="Enter your password" required>
+        <label class="form-label" for="password">Password</label>
+        <input type="password" name="password" id="password" class="form-control"
+               placeholder="Enter your password" required autocomplete="current-password">
       </div>
       <button type="submit" class="btn btn-primary w-full">Log In →</button>
     </form>
 
-    <p style="text-align:center; margin-top:1rem; font-size:.85rem; color:#666;">
+    {% if has_unclaimed %}
+    <div style="margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border); text-align:center;">
+      <p style="font-size:.82rem; color:var(--text-muted); margin-bottom:.6rem;">
+        First time here?
+      </p>
+      <a href="{{ url_for('auth.claim') }}"
+         style="display:inline-flex; align-items:center; gap:.5rem; font-size:.9rem; font-weight:600;
+                color:var(--emerald); text-decoration:none; padding:.5rem 1rem;
+                background:var(--emerald-bg); border:1px solid rgba(52,211,153,.25);
+                border-radius:var(--radius); transition:all var(--transition);"
+         onmouseover="this.style.background='rgba(52,211,153,.18)'"
+         onmouseout="this.style.background='var(--emerald-bg)'">
+        🎓 I'm a new student — set up my account
+      </a>
+    </div>
+    {% endif %}
+
+    <p style="text-align:center; margin-top:1.25rem; font-size:.78rem; color:var(--text-muted);">
       CBSE Learning Portal
     </p>
   </div>
-
 </div>
-
-<script>
-function showPw(sel) {
-  var opt = sel.options[sel.selectedIndex];
-  var pw  = opt.getAttribute('data-pw') || '';
-  var box = document.getElementById('pw-box');
-  if (pw) {
-    document.getElementById('pw-display').textContent = pw;
-    box.style.display = 'block';
-  } else {
-    box.style.display = 'none';
-  }
-}
-</script>
 {% endblock %}

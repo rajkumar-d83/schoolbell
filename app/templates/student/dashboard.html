@@ -82,7 +82,7 @@
           </span>
         </td>
         <td>{{ session.correct_answers }}/{{ session.total_questions }}</td>
-        <td>{{ session.completed_at.strftime('%d %b') if session.completed_at else '—' }}</td>
+        <td>{{ session.completed_at.strftime('%d %b %Y') if session.completed_at else '—' }}</td>
       </tr>
       {% endfor %}
     </tbody>
