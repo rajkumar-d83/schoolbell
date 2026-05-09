@@ -11,20 +11,19 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
       <label class="form-label">Full Name</label>
-      <input type="text" name="name" class="form-control" placeholder="e.g. Priya Sharma" required>
+      <input type="text" name="name" id="name-input" class="form-control" placeholder="e.g. Scott Tiger" required oninput="updatePreview()">
+      <small class="form-hint">Password will be set to the <strong>last name in lowercase</strong> automatically.
+        Preview: <span id="pw-preview" style="color:var(--emerald); font-weight:700;">—</span>
+      </small>
     </div>
     <div class="form-group">
       <label class="form-label">Username</label>
-      <input type="text" name="username" class="form-control" placeholder="e.g. priya" required>
-      <small class="form-hint">Student will use this to log in.</small>
+      <input type="text" name="username" class="form-control" placeholder="e.g. scott" required>
+      <small class="form-hint">Student uses this to log in after claiming their account.</small>
     </div>
     <div class="form-group">
       <label class="form-label">Email</label>
       <input type="email" name="email" class="form-control" placeholder="student@email.com" required>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Password</label>
-      <input type="password" name="password" class="form-control" placeholder="Set a password" required>
     </div>
     <div class="form-group">
       <label class="form-label">Grade</label>
@@ -48,4 +47,13 @@
     </div>
   </form>
 </div>
+
+<script>
+function updatePreview() {
+  const name  = document.getElementById('name-input').value.trim();
+  const parts = name.split(/\s+/);
+  const pw    = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '—';
+  document.getElementById('pw-preview').textContent = pw;
+}
+</script>
 {% endblock %}

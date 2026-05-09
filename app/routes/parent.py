@@ -61,10 +61,13 @@ def add_student():
         name     = request.form.get('name', '').strip()
         username = request.form.get('username', '').strip()
         email    = request.form.get('email', '').strip()
-        password = request.form.get('password', '').strip()
         grade    = request.form.get('grade', type=int)
 
-        if not all([name, username, email, password, grade]):
+        # Auto-derive password from last name (lowercase)
+        parts    = name.split()
+        password = parts[-1].lower() if len(parts) > 1 else name.lower()
+
+        if not all([name, username, email, grade]):
             flash('All fields are required.', 'danger')
             return redirect(url_for('parent.add_student'))
 
@@ -79,7 +82,7 @@ def add_student():
         pw_hash = bcrypt.generate_password_hash(password).decode('utf-8')
         new_student = User(name=name, username=username, email=email,
                            password_hash=pw_hash, role='student', grade=grade,
-                           display_password=password)
+                           display_password=password, is_claimed=False)
         db.session.add(new_student)
         db.session.commit()
         flash(f'Student {name} added successfully!', 'success')
