@@ -135,14 +135,81 @@ TYPE 3 — PRACTICAL / REAL-WORLD ({practical_n} questions):
   WRONG: "Arjun knows plants need sunlight for photosynthesis. What does sunlight provide?"
   RIGHT: "Arjun kept a money plant in a dark cupboard for 10 days. Its leaves slowly turned yellow and droopy. What is the most likely reason?"
 
-  More real-world scene ideas to draw from:
-  - Cooking: pressure cooker, gas flame, steel vs clay pot, boiling water
-  - Weather: rain, fog on glasses, wet clothes drying faster on a windy day
-  - Sports: cricket ball spin, cycling uphill, swimming
-  - Market: weighing vegetables, mixing colours, ice melting in a juice glass
-  - Home: fan slowing when another appliance switches on, torch dim when battery is low
-  - Farm/nature: soil types, seed germination, river water vs well water
-  - School lab: magnets, circuits, rulers, measuring cylinders
+  Real-world scene library — pick what fits the chapter topic:
+
+  KITCHEN & FOOD
+  - Pressure cooker whistling, steam condensing on lid
+  - Chapati puffing up on the tawa, dosa batter fermenting overnight
+  - Salt dissolving in dal, oil floating on water, turmeric staining a white cloth
+  - Refrigerator keeping food fresh, ice melting in a juice glass on a hot day
+  - Lemon juice removing rust stains, baking soda making a cake rise
+  - Matka (clay pot) keeping water cooler than a steel bottle
+
+  WEATHER & ENVIRONMENT
+  - Monsoon puddles, flooded streets, iron gate rusting after rain
+  - Fog forming on spectacle lenses when walking from AC room to outside
+  - Clothes drying faster on a sunny windy day vs a cloudy still day
+  - Rainbow after a shower, thunder heard after lightning is seen
+  - Shade under a peepal tree feeling cooler than open road
+  - Roads melting/cracking in peak summer heat
+
+  TRANSPORT
+  - Auto-rickshaw engine heating up, exhaust smoke colour
+  - Bicycle tyre going flat in cold weather, brakes wearing down on a slope
+  - Railway track expansion gaps, train wheels squealing on a curve
+  - Boat floating on a river, a stone sinking — why the difference?
+  - Car windshield fogging up inside on a cold morning
+
+  HOME & DAILY LIFE
+  - Ceiling fan slowing when a new appliance is switched on
+  - Torch getting dim when battery is low
+  - Mirror fogging after a hot shower, candle wax melting and solidifying
+  - Rubber chappal melting if left near a gas flame
+  - Wet clothes feeling colder than dry clothes on a breezy day
+  - Mobile phone heating up while charging or playing a game
+  - Solar panel on a neighbour's rooftop working even on a cloudy day
+
+  SPORTS & PLAY
+  - Cricket ball swinging more in humid evening air vs dry afternoon
+  - Spin bowler making the ball turn — which force causes the curve?
+  - Cycle gear making pedalling easier uphill
+  - Swimmer moving faster in saltwater than in fresh water
+  - Kite flying higher when the wind blows stronger
+  - Rubber ball bouncing higher on a hard floor vs sand
+
+  MARKET & SHOPPING
+  - Weighing vegetables on a balance scale vs a spring scale — same in both places?
+  - Ice blocks wrapped in jute sacks melting slowly at the sabzi market
+  - Steel utensils feeling hotter than plastic handles on the same vessel
+  - Shopkeeper mixing two paints — which colours blend and which don't?
+
+  FARM & NATURE
+  - Sandy soil water draining fast, clay soil staying waterlogged
+  - Seeds sprouting faster in moist warm soil than dry cold soil
+  - River water looking muddy after rain — what is suspended in it?
+  - Leaves wilting on a hot afternoon, recovering in the evening
+  - Birds flying in a V-formation, fish swimming in a school
+  - Firefly glowing, earthworm coming out after rain
+
+  SCHOOL & SCIENCE LAB
+  - Magnet picking up iron filings but not aluminium foil
+  - Circuit bulb glowing dim when connected with a longer wire
+  - Thermometer in a beaker of hot water vs cold water
+  - Ruler bending slightly when pressed — elastic or plastic change?
+  - Ink drop spreading through water in a beaker without stirring
+
+  FESTIVALS & CULTURE
+  - Diwali sparkler burning bright — what chemical reaction?
+  - Holi gulal (colour powder) dissolving in water vs oil
+  - Hot air balloon / sky lantern rising — why does it float upward?
+  - Clay diyas keeping flame stable even in light breeze
+  - Fireworks showing different colours — what causes each colour?
+
+  HEALTH & BODY
+  - Sweating making you feel cooler — what process is at work?
+  - Breathing hard after running up stairs — what does the body need more of?
+  - Fever making you feel hot — what is the body trying to do?
+  - Applying antiseptic cream — why does it sting, then feel better?
 
   Use Indian names naturally (Riya, Arjun, Meera, Rahul, Priya, Aditya, Kavya).
   Set "difficulty": "medium"
