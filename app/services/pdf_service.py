@@ -101,12 +101,17 @@ def generate_questions_from_text(pdf_text, num_questions, chapter_title):
         hard_n      = max(1, round(num_questions * 0.10))
         practical_n = num_questions - easy_n - hard_n
 
-        prompt = f"""You are a fun, encouraging CBSE/NCERT teacher creating quiz questions for Indian school students (ages 8–16).
+        prompt = f"""You are an expert CBSE/NCERT teacher creating quiz questions for Indian school students (ages 8–16).
 
 Chapter: {chapter_title}
 
 Content:
 {pdf_text[:12000]}
+
+BEFORE writing any questions, think through these steps in your head:
+1. Identify the 6–8 core concepts in this chapter.
+2. For each concept, ask: "Where would a student actually SEE or USE this in daily Indian life?" Think of kitchens, markets, cricket grounds, monsoons, school labs, auto-rickshaws, phones, farms, rivers.
+3. Only then write the questions — rooted in those real situations.
 
 Generate exactly {num_questions} multiple choice questions in this exact mix:
 
@@ -116,23 +121,38 @@ TYPE 1 — SIMPLE ({easy_n} question{'s' if easy_n != 1 else ''}):
   Set "difficulty": "easy"
 
 TYPE 2 — CHALLENGING ({hard_n} question{'s' if hard_n != 1 else ''}):
-  A harder direct question testing deeper understanding of definitions, formulae, or multi-step facts from the book.
+  A harder question testing deeper understanding of definitions, formulae, or multi-step reasoning.
   Example: "Which of the following correctly states Newton's Second Law of Motion?"
   Set "difficulty": "hard"
 
 TYPE 3 — PRACTICAL / REAL-WORLD ({practical_n} questions):
-  A scenario or mini-story where the student must THINK and APPLY the concept — NOT just recall a fact.
-  Use relatable Indian names and everyday situations:
-    "Riya notices…", "Arjun is cooking and…", "During a school trip, Meera sees…"
-  Example: "Arjun fills an iron pot and a plastic bucket with water. The iron pot feels colder to touch. What property of iron explains this?"
-  AVOID questions that just say "What is X?" or "Define Y."
+  GOLDEN RULE: Start with an OBSERVATION or SITUATION — never with the concept name.
+  The student must figure out which concept explains what they are seeing.
+
+  WRONG (fake practical): "Riya's teacher explained that iron conducts heat. Which property does this show?"
+  RIGHT (true practical): "Riya touches an iron tawa and a wooden rolling pin left on the kitchen counter on a cold morning. The tawa feels much colder even though both are in the same room. Why?"
+
+  WRONG: "Arjun knows plants need sunlight for photosynthesis. What does sunlight provide?"
+  RIGHT: "Arjun kept a money plant in a dark cupboard for 10 days. Its leaves slowly turned yellow and droopy. What is the most likely reason?"
+
+  More real-world scene ideas to draw from:
+  - Cooking: pressure cooker, gas flame, steel vs clay pot, boiling water
+  - Weather: rain, fog on glasses, wet clothes drying faster on a windy day
+  - Sports: cricket ball spin, cycling uphill, swimming
+  - Market: weighing vegetables, mixing colours, ice melting in a juice glass
+  - Home: fan slowing when another appliance switches on, torch dim when battery is low
+  - Farm/nature: soil types, seed germination, river water vs well water
+  - School lab: magnets, circuits, rulers, measuring cylinders
+
+  Use Indian names naturally (Riya, Arjun, Meera, Rahul, Priya, Aditya, Kavya).
   Set "difficulty": "medium"
 
 RULES FOR ALL QUESTIONS:
 - Keep language simple and friendly for school kids.
 - Wrong options (distractors) must be plausible — not obviously silly.
-- Explanation must be warm and encouraging — tell WHY in 1–2 sentences a child can understand.
-- Mix up the types (do not group them all together); vary which letter (A/B/C/D) is correct.
+- Explanation: warm, encouraging, 1–2 sentences. Tell WHY in a way a child can picture it.
+- Mix question types (do not group them all together); vary which letter (A/B/C/D) is correct.
+- Self-check before finalising each TYPE 3 question: "Could a student answer this by just reading the definition?" If yes, rewrite it.
 
 Return ONLY a valid JSON array — no extra text, no markdown fences. Each object must have exactly these keys:
 - "question_text": the question
