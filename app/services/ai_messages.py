@@ -42,6 +42,7 @@ Rules:
                 config=gtypes.GenerateContentConfig(
                     max_output_tokens=150,
                     temperature=0.9,
+                    thinking_config=gtypes.ThinkingConfig(thinking_budget=0),
                 )
             )
             return response.text.strip()
