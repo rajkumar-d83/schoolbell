@@ -37,7 +37,7 @@ Rules:
             from google.genai import types as gtypes
             client = genai.Client(api_key=google_key)
             response = client.models.generate_content(
-                model='gemini-1.5-flash',
+                model='gemini-2.0-flash',
                 contents=prompt,
                 config=gtypes.GenerateContentConfig(
                     max_output_tokens=150,
