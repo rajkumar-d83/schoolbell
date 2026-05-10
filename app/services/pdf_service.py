@@ -46,7 +46,7 @@ def _call_ai(prompt, max_tokens=2000, timeout=120.0):
             from google.genai import types as gtypes
             client = genai.Client(api_key=google_key)
             response = client.models.generate_content(
-                model='gemini-2.0-flash',
+                model='gemini-2.5-flash',
                 contents=prompt,
                 config=gtypes.GenerateContentConfig(
                     max_output_tokens=max_tokens,
