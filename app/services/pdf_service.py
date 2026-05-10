@@ -51,7 +51,6 @@ def _call_ai(prompt, max_tokens=2000, timeout=120.0):
                 config=gtypes.GenerateContentConfig(
                     max_output_tokens=max_tokens,
                     temperature=0.7,
-                    thinking_config=gtypes.ThinkingConfig(thinking_budget=0),
                 )
             )
             _log('[AI] provider=Gemini')
@@ -147,7 +146,7 @@ Return ONLY a valid JSON array — no extra text, no markdown fences. Each objec
 Return only the JSON array, nothing else."""
 
         _log('[generate_questions] calling AI…')
-        response_text = _call_ai(prompt, max_tokens=16000, timeout=240.0)
+        response_text = _call_ai(prompt, max_tokens=32000, timeout=300.0)
         response_text = _strip_fences(response_text)
         _log(f'[generate_questions] response received — {len(response_text)} chars')
 
