@@ -22,7 +22,11 @@ def sanitize_svg(svg):
 
 
 def _log(msg):
-    print(msg, file=sys.stderr)
+    try:
+        from flask import current_app
+        current_app.logger.info(msg)
+    except RuntimeError:
+        print(msg, file=sys.stderr)
 
 
 def _strip_fences(text):
