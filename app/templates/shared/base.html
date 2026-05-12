@@ -6,6 +6,7 @@
   <title>{% block title %}SchoolBell{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/schoolbell-logo.svg') }}">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/schoolbell-logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -16,16 +17,38 @@
 <!-- Navbar -->
 <nav class="navbar" role="navigation" aria-label="Main navigation">
   <a class="navbar-brand" href="{{ url_for('main.index') }}" aria-label="SchoolBell home">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="22" height="22"
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="26" height="26"
          aria-hidden="true" style="vertical-align:middle;flex-shrink:0">
       <defs>
-        <linearGradient id="nb-g" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#818CF8"/>
-          <stop offset="100%" stop-color="#FBBF24"/>
+        <linearGradient id="nb-bell" x1="20%" y1="0%" x2="80%" y2="100%">
+          <stop offset="0%"   stop-color="#FDE68A"/>
+          <stop offset="60%"  stop-color="#FBBF24"/>
+          <stop offset="100%" stop-color="#D97706"/>
         </linearGradient>
       </defs>
-      <path d="M16 2 L19 12 L29 16 L19 20 L16 30 L13 20 L3 16 L13 12 Z" fill="url(#nb-g)"/>
-      <circle cx="16" cy="16" r="2.5" fill="white" opacity="0.55"/>
+      <!-- White circle background -->
+      <circle cx="16" cy="16" r="15.5" fill="white"/>
+      <circle cx="16" cy="16" r="15.5" fill="none" stroke="#FBBF24" stroke-width="1.2"/>
+      <!-- Grad cap board -->
+      <rect x="8" y="6.5" width="16" height="3" rx="0.6" fill="#1E293B"/>
+      <!-- Cap crown -->
+      <rect x="13" y="4"  width="6"  height="3" rx="0.6" fill="#1E293B"/>
+      <!-- Tassel -->
+      <line x1="23.5" y1="8" x2="25" y2="11" stroke="#FBBF24" stroke-width="1.2" stroke-linecap="round"/>
+      <circle cx="25.2" cy="11.8" r="1.2" fill="#FBBF24"/>
+      <!-- Bell neck -->
+      <rect x="14.5" y="9.5" width="3" height="2" rx="0.5" fill="#FBBF24"/>
+      <!-- Bell body -->
+      <path d="M16,11.5
+               C12.5,11.5 10,14 9.5,17
+               L9,24 L23,24 L22.5,17
+               C22,14 19.5,11.5 16,11.5 Z"
+            fill="url(#nb-bell)"/>
+      <!-- Bell rim -->
+      <path d="M7.5,24 Q16,26.5 24.5,24 L24.5,25.5 Q16,28 7.5,25.5 Z"
+            fill="#D97706"/>
+      <!-- Clapper -->
+      <circle cx="16" cy="27.5" r="1.8" fill="#B45309"/>
     </svg>
     SchoolBell
   </a>
