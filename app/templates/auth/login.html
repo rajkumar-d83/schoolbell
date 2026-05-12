@@ -5,8 +5,18 @@
 <div class="login-wrap">
   <div class="login-card">
     <div class="login-logo">
-      <img src="{{ url_for('static', filename='img/schoolbell-logo.png') }}"
-           alt="SchoolBell" style="width:260px; max-width:100%; border-radius:12px;">
+      <img src="{{ url_for('static', filename='img/schoolbell-logo.svg') }}"
+           alt="SchoolBell" style="width:140px; height:140px; display:block; margin:0 auto 0.5rem;">
+      <div style="text-align:center; font-size:1.6rem; font-weight:800; letter-spacing:.5px;
+                  background:linear-gradient(135deg,#FDE68A,#FBBF24,#D97706);
+                  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+                  background-clip:text;">
+        SchoolBell
+      </div>
+      <div style="text-align:center; font-size:.75rem; color:var(--text-muted);
+                  letter-spacing:2px; text-transform:uppercase; margin-top:.2rem;">
+        Enlightening the Mind
+      </div>
     </div>
 
     <form method="POST" action="{{ url_for('auth.login') }}">
