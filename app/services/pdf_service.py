@@ -368,20 +368,26 @@ def generate_svg_for_question(question_text, subject_name, grade):
         return None
 
     prompt = f"""You are an educational illustrator for Indian school textbooks (Grade {grade} {subject_name}).
-Draw a simple cartoon SVG illustration of the SITUATION described in this quiz question.
+Draw a clean, simple SVG illustration of the SITUATION in this quiz question.
 
 Question: {question_text}
 
-CRITICAL RULES:
-1. Illustrate ONLY the scenario/situation — never the answer or any hint toward it
-2. Do NOT label, highlight, or depict any of the answer choices
-3. Use viewBox="0 0 300 200" — this exact attribute
-4. Bright friendly colours: yellows, greens, blues, oranges
-5. Draw ONE clear scene that shows what is happening in the question
-6. Simple shapes only: rect, circle, ellipse, path, line, polygon
-7. Short scene labels (1–3 words) as <text> elements are fine, but no answer clues
-8. NO <script>, NO event handlers, NO external links or images
-9. Return ONLY the raw <svg>...</svg> tag — no markdown, no explanation, nothing else"""
+BEFORE drawing, plan your layout:
+- Decide what 3–5 objects you need
+- Assign each a rough (x, y) position so nothing overlaps
+- Keep all objects inside the 300×200 canvas with 15px margin on each side
+
+STRICT RULES — follow every one:
+1. First element MUST be: <rect width="300" height="200" fill="white"/>
+2. viewBox="0 0 300 200" — exact, no changes
+3. Maximum 10 SVG elements total (including the background rect)
+4. No two elements may overlap — check positions before writing
+5. Text labels: place BELOW or BESIDE their object, never on top of it
+6. Font size for any text: 11–13px only; keep text inside the canvas
+7. Illustrate the SITUATION only — no hints toward the correct answer
+8. Simple shapes only: rect, circle, ellipse, path, line, polygon, text
+9. NO <script>, NO event handlers, NO external images or links
+10. Return ONLY the raw <svg>...</svg> tag — nothing before or after it"""
 
     try:
         from google import genai
