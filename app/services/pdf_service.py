@@ -360,8 +360,7 @@ Return only the JSON array, nothing else."""
         return []
 
 
-def generate_svg_for_question(question_text, option_a, option_b, option_c, option_d,
-                               subject_name, grade):
+def generate_svg_for_question(question_text, subject_name, grade):
     """Generate a simple educational SVG illustration for one quiz question.
     Uses Gemini Flash with thinking disabled — fast and cheap. Returns sanitized SVG or None."""
     google_key = os.environ.get('GOOGLE_API_KEY')
@@ -369,19 +368,20 @@ def generate_svg_for_question(question_text, option_a, option_b, option_c, optio
         return None
 
     prompt = f"""You are an educational illustrator for Indian school textbooks (Grade {grade} {subject_name}).
-Draw a simple cartoon SVG illustration that helps a student visualise this quiz question.
+Draw a simple cartoon SVG illustration of the SITUATION described in this quiz question.
 
 Question: {question_text}
-Options: A) {option_a}  B) {option_b}  C) {option_c}  D) {option_d}
 
-RULES — follow exactly:
-1. Use viewBox="0 0 300 200" — this exact attribute, nothing else
-2. Bright friendly colours: yellows, greens, blues, oranges
-3. Draw ONE clear scene showing the real-world situation in the question
-4. Simple shapes only: rect, circle, ellipse, path, line, polygon
-5. You MAY add short labels (1–3 words) as <text> elements if helpful
-6. NO <script>, NO event handlers, NO external links or images
-7. Return ONLY the raw <svg>...</svg> tag — no markdown, no explanation, nothing else"""
+CRITICAL RULES:
+1. Illustrate ONLY the scenario/situation — never the answer or any hint toward it
+2. Do NOT label, highlight, or depict any of the answer choices
+3. Use viewBox="0 0 300 200" — this exact attribute
+4. Bright friendly colours: yellows, greens, blues, oranges
+5. Draw ONE clear scene that shows what is happening in the question
+6. Simple shapes only: rect, circle, ellipse, path, line, polygon
+7. Short scene labels (1–3 words) as <text> elements are fine, but no answer clues
+8. NO <script>, NO event handlers, NO external links or images
+9. Return ONLY the raw <svg>...</svg> tag — no markdown, no explanation, nothing else"""
 
     try:
         from google import genai

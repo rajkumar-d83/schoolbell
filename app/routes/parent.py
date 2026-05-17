@@ -385,7 +385,6 @@ def generate_single_image(question_id):
     subject  = Subject.query.get(question.subject_id)
     svg = generate_svg_for_question(
         question.question_text,
-        question.option_a, question.option_b, question.option_c, question.option_d,
         subject.name if subject else 'Science',
         subject.grade if subject else 8,
     )
