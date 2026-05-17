@@ -6,7 +6,8 @@ from app import db
 from app.models.models import (User, Subject, Chapter, Question,
                                 QuizSession, QuestionAttempt, TeachSession)
 from app.services.pdf_service import (extract_pdf_text, generate_questions_from_text,
-                                       generate_cheatsheet as make_cheatsheet)
+                                       generate_cheatsheet as make_cheatsheet,
+                                       generate_svg_for_question)
 import fitz as _fitz_lib
 from app.services.analytics import get_student_performance
 import os, re, shutil, uuid, json
@@ -363,6 +364,36 @@ def view_questions(chapter_id):
     questions = Question.query.filter_by(chapter_id=chapter_id).all()
     return render_template('parent/view_questions.html',
                            chapter=chapter, questions=questions)
+
+
+# ── Generate Images ────────────────────────────────────────────────────────────
+@parent_bp.route('/chapters/<int:chapter_id>/generate-images')
+@login_required
+@parent_required
+def generate_images(chapter_id):
+    chapter   = Chapter.query.get_or_404(chapter_id)
+    questions = Question.query.filter_by(chapter_id=chapter_id).all()
+    return render_template('parent/generate_images.html',
+                           chapter=chapter, questions=questions)
+
+
+@parent_bp.route('/questions/<int:question_id>/generate-image', methods=['POST'])
+@login_required
+@parent_required
+def generate_single_image(question_id):
+    question = Question.query.get_or_404(question_id)
+    subject  = Subject.query.get(question.subject_id)
+    svg = generate_svg_for_question(
+        question.question_text,
+        question.option_a, question.option_b, question.option_c, question.option_d,
+        subject.name if subject else 'Science',
+        subject.grade if subject else 8,
+    )
+    if svg:
+        question.diagram_svg = svg
+        db.session.commit()
+        return jsonify({'ok': True, 'svg': svg, 'question_id': question_id})
+    return jsonify({'ok': False, 'error': 'Generation failed'}), 500
 
 
 # ── Teaching Mode ──────────────────────────────────────────────────────────────

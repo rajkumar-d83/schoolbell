@@ -16,6 +16,10 @@
   {% endif %}
   <a href="{{ url_for('parent.generate_questions', chapter_id=chapter.id) }}"
      class="btn btn-outline ml-1">🔄 Regenerate</a>
+  {% if questions %}
+  <a href="{{ url_for('parent.generate_images', chapter_id=chapter.id) }}"
+     class="btn btn-outline ml-1">🖼 Images</a>
+  {% endif %}
 </div>
 
 {% if questions %}

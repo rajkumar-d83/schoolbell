@@ -1,0 +1,146 @@
+{% extends "shared/base.html" %}
+{% block title %}Generate Images – {{ chapter.title }}{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>🖼 Question Images</h1>
+  <p class="subtitle">{{ chapter.title }} &nbsp;|&nbsp; {{ chapter.subject.name }}</p>
+</div>
+
+<div class="mb-2 action-bar">
+  <a href="{{ url_for('parent.view_questions', chapter_id=chapter.id) }}" class="btn btn-outline">← Questions</a>
+</div>
+
+{% set has_count = questions | selectattr('diagram_svg') | list | length %}
+{% set missing   = questions | length - has_count %}
+
+<div class="form-card" style="margin-bottom:1.5rem;">
+  <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+    <div style="font-size:.9rem; color:var(--text-secondary);">
+      <strong style="color:var(--emerald);">{{ has_count }}</strong> of
+      <strong>{{ questions | length }}</strong> questions have images
+      {% if missing > 0 %}
+        &nbsp;·&nbsp; <span style="color:var(--amber);">{{ missing }} missing</span>
+      {% endif %}
+    </div>
+    {% if missing > 0 %}
+    <button id="gen-all-btn" class="btn btn-primary" onclick="startGeneration()">
+      ✨ Generate {{ missing }} Missing Image{{ 's' if missing != 1 }}
+    </button>
+    {% else %}
+    <span style="color:var(--emerald); font-size:.9rem;">✓ All images are ready!</span>
+    {% endif %}
+  </div>
+
+  <div id="progress-wrap" style="display:none; margin-top:1rem;">
+    <div style="font-size:.85rem; color:var(--text-muted); margin-bottom:.4rem;">
+      <span id="progress-label">Starting…</span>
+    </div>
+    <div style="background:var(--bg-input); border-radius:99px; height:8px; overflow:hidden;">
+      <div id="progress-bar"
+           style="background:var(--indigo); height:100%; width:0%; transition:width .4s;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="img-gen-grid" id="question-grid">
+  {% for q in questions %}
+  <div class="img-gen-card" id="qcard-{{ q.id }}"
+       data-question-id="{{ q.id }}"
+       data-has-image="{{ '1' if q.diagram_svg else '0' }}">
+
+    <div class="img-gen-preview" id="preview-{{ q.id }}">
+      {% if q.diagram_svg %}
+        {{ q.diagram_svg | safe }}
+      {% else %}
+        <div class="img-gen-placeholder">🖼</div>
+      {% endif %}
+    </div>
+
+    <div class="img-gen-qtext">
+      {{ q.question_text[:130] }}{% if q.question_text | length > 130 %}…{% endif %}
+    </div>
+
+    <div class="img-gen-status" id="status-{{ q.id }}">
+      {% if q.diagram_svg %}
+        <span style="color:var(--emerald); font-size:.78rem;">✓ Generated</span>
+      {% else %}
+        <span style="color:var(--text-muted); font-size:.78rem;">No image yet</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<input type="hidden" id="csrf-token" value="{{ csrf_token() }}">
+
+<script>
+let running = false;
+
+function startGeneration() {
+  if (running) return;
+  running = true;
+
+  const btn = document.getElementById('gen-all-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  document.getElementById('progress-wrap').style.display = 'block';
+
+  const cards = [...document.querySelectorAll('[data-has-image="0"]')];
+  const total  = cards.length;
+  let done     = 0;
+  const CSRF   = document.getElementById('csrf-token').value;
+
+  function next() {
+    document.getElementById('progress-bar').style.width =
+      Math.round(done / total * 100) + '%';
+
+    if (done >= total) {
+      document.getElementById('progress-label').textContent =
+        'Done! ' + total + ' image' + (total !== 1 ? 's' : '') + ' generated.';
+      document.getElementById('progress-bar').style.width = '100%';
+      btn.textContent = '✓ All Done';
+      return;
+    }
+
+    const card = cards[done];
+    const qid  = card.dataset.questionId;
+
+    document.getElementById('progress-label').textContent =
+      'Generating ' + (done + 1) + ' of ' + total + '…';
+    document.getElementById('status-' + qid).innerHTML =
+      '<span style="color:var(--amber); font-size:.78rem;">⏳ Generating…</span>';
+
+    const body = new URLSearchParams({ csrf_token: CSRF });
+
+    fetch('/parent/questions/' + qid + '/generate-image', {
+      method:  'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body:    body
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok && data.svg) {
+        document.getElementById('preview-' + qid).innerHTML = data.svg;
+        document.getElementById('status-' + qid).innerHTML =
+          '<span style="color:var(--emerald); font-size:.78rem;">✓ Generated</span>';
+        card.dataset.hasImage = '1';
+      } else {
+        document.getElementById('status-' + qid).innerHTML =
+          '<span style="color:var(--danger); font-size:.78rem;">✗ Failed</span>';
+      }
+    })
+    .catch(() => {
+      document.getElementById('status-' + qid).innerHTML =
+        '<span style="color:var(--danger); font-size:.78rem;">✗ Error</span>';
+    })
+    .finally(() => {
+      done++;
+      next();
+    });
+  }
+
+  next();
+}
+</script>
+{% endblock %}

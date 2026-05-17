@@ -1,24 +1,30 @@
 """
-NCERT English Medium Books Downloader - Grades 4 to 10
+NCERT English Medium Books Downloader - Grades 4 to 12
 =======================================================
-Downloads all available English medium NCERT textbooks (Grades 4-10)
+Downloads all available English medium NCERT textbooks (Grades 4-12)
 from ncert.nic.in as individual chapter PDFs and organises them into:
 
   SchoolBell/ncert_books/
     Grade_6/Science/  Grade_6/Maths/  Grade_6/Social_Science/
-    Grade_7/...
     ...
-    Grade_10/...
+    Grade_11/Physics_Part1/  Grade_11/Chemistry_Part1/  Grade_11/Maths/  ...
+    Grade_12/Physics_Part1/  Grade_12/Chemistry_Part1/  Grade_12/Maths/  ...
 
 After running, use SchoolBell's Bulk Import to load them into the app.
+
+NCERT code prefix convention:
+  f=Gr6  g=Gr7  h=Gr8  i=Gr9  j=Gr10  k=Gr11  l=Gr12
+  e = English medium
 
 REQUIREMENTS:
   pip install requests
 
 USAGE:
-  python app/Ncert_books_download.py            # download / resume
-  python app/Ncert_books_download.py --verify   # scan folder, list broken files
-  python app/Ncert_books_download.py --retry    # re-download only broken/missing files
+  python app/Ncert_books_download.py                     # download / resume all
+  python app/Ncert_books_download.py --grade 11          # only Grade 11
+  python app/Ncert_books_download.py --grade 12          # only Grade 12
+  python app/Ncert_books_download.py --verify            # scan folder, list broken files
+  python app/Ncert_books_download.py --retry             # re-download only broken/missing files
 """
 
 import os
@@ -96,6 +102,29 @@ BOOKS = [
     ("Grade_10", "SS_Economics",          "jess2",   5),  # Understanding Economic Development
     ("Grade_10", "SS_History",            "jess3",   5),  # India & the Contemporary World II
     ("Grade_10", "SS_Civics",             "jess4",   8),  # Democratic Politics II
+
+    # ── Grade 11 ──────────────────────────────────────────────────────────────
+    ("Grade_11", "English_Hornbill",      "kehn1",   8),  # Hornbill (main reader)
+    ("Grade_11", "English_Snapshots",     "kesn1",   8),  # Snapshots (supplementary)
+    ("Grade_11", "Maths",                 "kemh1",  16),  # Mathematics
+    ("Grade_11", "Physics_Part1",         "keph1",   8),  # Physics Part 1
+    ("Grade_11", "Physics_Part2",         "keph2",   7),  # Physics Part 2
+    ("Grade_11", "Chemistry_Part1",       "kech1",   7),  # Chemistry Part 1
+    ("Grade_11", "Chemistry_Part2",       "kech2",   7),  # Chemistry Part 2
+    ("Grade_11", "Biology",               "kebo1",  22),  # Biology
+    ("Grade_11", "Computer_Science",      "kecs1",   9),  # Computer Science
+
+    # ── Grade 12 ──────────────────────────────────────────────────────────────
+    ("Grade_12", "English_Flamingo",      "lefl1",   8),  # Flamingo (main reader)
+    ("Grade_12", "English_Vistas",        "levs1",   8),  # Vistas (supplementary)
+    ("Grade_12", "Maths_Part1",           "lemh1",   6),  # Mathematics Part 1
+    ("Grade_12", "Maths_Part2",           "lemh2",   7),  # Mathematics Part 2
+    ("Grade_12", "Physics_Part1",         "leph1",   8),  # Physics Part 1
+    ("Grade_12", "Physics_Part2",         "leph2",   7),  # Physics Part 2
+    ("Grade_12", "Chemistry_Part1",       "lech1",   9),  # Chemistry Part 1
+    ("Grade_12", "Chemistry_Part2",       "lech2",   7),  # Chemistry Part 2
+    ("Grade_12", "Biology",               "lebo1",  16),  # Biology
+    ("Grade_12", "Computer_Science",      "lecs1",   9),  # Computer Science
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -185,17 +214,20 @@ def cmd_verify():
 
 # ── Main download loop ────────────────────────────────────────────────────────
 
-def run_download(force_list=None):
+def run_download(force_list=None, grade_filter=None):
     """
     Download all chapters. If force_list is given (list of dest_paths),
-    only those files are (re-)downloaded.
+    only those files are (re-)downloaded. grade_filter limits to one grade number.
     """
+    books = BOOKS if grade_filter is None else [
+        b for b in BOOKS if b[0] == "Grade_" + str(grade_filter)
+    ]
     print("=" * 62)
-    print("  NCERT English Books Downloader  (Grades 4-10)")
+    print("  NCERT English Books Downloader  (Grades 4-12)")
     print("=" * 62)
     print("  Saving to : " + BASE_DIR)
-    total_chapters = sum(n for _, _, _, n in BOOKS)
-    print("  Books: " + str(len(BOOKS)) + "   Chapters: " + str(total_chapters))
+    total_chapters = sum(n for _, _, _, n in books)
+    print("  Books: " + str(len(books)) + "   Chapters: " + str(total_chapters))
     if force_list is not None:
         print("  Mode: RETRY broken files (" + str(len(force_list)) + " targets)")
     print("=" * 62)
@@ -213,7 +245,7 @@ def run_download(force_list=None):
     skipped    = 0
     failed     = 0
 
-    for grade, subject, code, num_chapters in BOOKS:
+    for grade, subject, code, num_chapters in books:
         folder = os.path.join(BASE_DIR, grade, subject)
         os.makedirs(folder, exist_ok=True)
 
@@ -275,10 +307,13 @@ def cmd_retry():
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    arg = sys.argv[1] if len(sys.argv) > 1 else ""
+    arg  = sys.argv[1] if len(sys.argv) > 1 else ""
+    arg2 = sys.argv[2] if len(sys.argv) > 2 else ""
     if arg == "--verify":
         cmd_verify()
     elif arg == "--retry":
         cmd_retry()
+    elif arg == "--grade" and arg2.isdigit():
+        run_download(grade_filter=int(arg2))
     else:
         run_download()

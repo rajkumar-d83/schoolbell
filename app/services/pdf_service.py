@@ -358,3 +358,52 @@ Return only the JSON array, nothing else."""
     except Exception as e:
         _log(f'[extract_jee] error: {type(e).__name__}: {e}')
         return []
+
+
+def generate_svg_for_question(question_text, option_a, option_b, option_c, option_d,
+                               subject_name, grade):
+    """Generate a simple educational SVG illustration for one quiz question.
+    Uses Gemini Flash with thinking disabled — fast and cheap. Returns sanitized SVG or None."""
+    google_key = os.environ.get('GOOGLE_API_KEY')
+    if not google_key:
+        return None
+
+    prompt = f"""You are an educational illustrator for Indian school textbooks (Grade {grade} {subject_name}).
+Draw a simple cartoon SVG illustration that helps a student visualise this quiz question.
+
+Question: {question_text}
+Options: A) {option_a}  B) {option_b}  C) {option_c}  D) {option_d}
+
+RULES — follow exactly:
+1. Use viewBox="0 0 300 200" — this exact attribute, nothing else
+2. Bright friendly colours: yellows, greens, blues, oranges
+3. Draw ONE clear scene showing the real-world situation in the question
+4. Simple shapes only: rect, circle, ellipse, path, line, polygon
+5. You MAY add short labels (1–3 words) as <text> elements if helpful
+6. NO <script>, NO event handlers, NO external links or images
+7. Return ONLY the raw <svg>...</svg> tag — no markdown, no explanation, nothing else"""
+
+    try:
+        from google import genai
+        from google.genai import types as gtypes
+        client = genai.Client(api_key=google_key)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=gtypes.GenerateContentConfig(
+                max_output_tokens=2000,
+                temperature=0.8,
+                thinking_config=gtypes.ThinkingConfig(thinking_budget=0),
+            )
+        )
+        raw = response.text.strip()
+        if '```' in raw:
+            raw = _strip_fences(raw)
+        start = raw.find('<svg')
+        end   = raw.rfind('</svg>')
+        if start != -1 and end != -1:
+            raw = raw[start:end + 6]
+        return sanitize_svg(raw)
+    except Exception as e:
+        _log(f'[svg_gen] error: {type(e).__name__}: {e}')
+        return None

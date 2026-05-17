@@ -942,6 +942,46 @@ select.form-control option  { background: var(--bg-elevated); color: var(--text-
   padding: .5rem;
   max-width: 260px;
 }
+/* ── Image generation page ───────────────────────────────────────────────── */
+.img-gen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1rem;
+}
+.img-gen-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .9rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.img-gen-preview {
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.img-gen-preview svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+.img-gen-placeholder {
+  font-size: 2.5rem;
+  opacity: .25;
+}
+.img-gen-qtext {
+  font-size: .78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  flex: 1;
+}
+.img-gen-status { font-size: .78rem; }
 .fc-diagram {
   width: 100%;
   display: flex;
