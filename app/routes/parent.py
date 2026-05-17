@@ -344,8 +344,11 @@ def generate_questions(chapter_id):
             total = Question.query.filter_by(chapter_id=chapter_id).count()
             flash(f'{added} new questions added. Total in bank: {total}.', 'success')
             return redirect(url_for('parent.view_questions', chapter_id=chapter_id))
+        elif questions is None:
+            flash('Question generation failed — AI returned an unparseable response. '
+                  'Check the server error log for details.', 'danger')
         else:
-            flash('Question generation failed. Check your API key and try again.', 'danger')
+            flash('AI returned 0 questions. Try again or check the chapter PDF has readable text.', 'warning')
 
     page_count = 0
     if chapter.pdf_text:

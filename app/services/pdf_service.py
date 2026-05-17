@@ -40,7 +40,7 @@ def _strip_fences(text):
 
 
 def _call_ai(prompt, max_tokens=2000, timeout=120.0):
-    """Call Gemini if GOOGLE_API_KEY is set, otherwise fall back to Anthropic.
+    """Call Gemini Flash if GOOGLE_API_KEY is set, otherwise fall back to Anthropic.
     Returns the response text string, or raises on total failure."""
     google_key    = os.environ.get('GOOGLE_API_KEY')
     anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
@@ -51,24 +51,27 @@ def _call_ai(prompt, max_tokens=2000, timeout=120.0):
             from google.genai import types as gtypes
             client = genai.Client(api_key=google_key)
             response = client.models.generate_content(
-                model='gemini-2.5-pro',
+                model='gemini-2.5-flash',
                 contents=prompt,
                 config=gtypes.GenerateContentConfig(
                     max_output_tokens=max_tokens,
                     temperature=0.7,
+                    thinking_config=gtypes.ThinkingConfig(thinking_budget=0),
                 )
             )
-            _log('[AI] provider=Gemini')
+            _log('[AI] provider=Gemini Flash')
             return response.text.strip()
         except Exception as e:
             _log(f'[AI] Gemini failed ({type(e).__name__}: {e}) — trying Anthropic…')
 
     if anthropic_key:
         import anthropic
+        # Claude Sonnet 4.6 max output is 8192 tokens
+        anthropic_max = min(max_tokens, 8192)
         client = anthropic.Anthropic(api_key=anthropic_key, timeout=timeout)
         with client.messages.stream(
             model='claude-sonnet-4-6',
-            max_tokens=max_tokens,
+            max_tokens=anthropic_max,
             messages=[{'role': 'user', 'content': prompt}]
         ) as stream:
             _log('[AI] provider=Anthropic')
@@ -251,10 +254,10 @@ Return only the JSON array, nothing else."""
 
     except json.JSONDecodeError as e:
         _log(f'[generate_questions] JSON parse error: {e}')
-        return []
+        return None
     except Exception as e:
         _log(f'[generate_questions] error: {type(e).__name__}: {e}')
-        return []
+        return None
 
 
 def generate_cheatsheet(pdf_text, chapter_title, subject_name, grade):
