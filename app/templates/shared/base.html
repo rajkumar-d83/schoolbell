@@ -60,11 +60,13 @@
     {% if current_user.role == 'student' %}
       <a class="nav-link" href="{{ url_for('student.dashboard') }}">🏠 <span>Home</span></a>
       <a class="nav-link" href="{{ url_for('student.subjects') }}">📚 <span>Subjects</span></a>
+      <a class="nav-link" href="{{ url_for('student.jee_home') }}">🎯 <span>JEE</span></a>
       <a class="nav-link" href="{{ url_for('student.performance') }}">📊 <span>Progress</span></a>
     {% else %}
       <a class="nav-link" href="{{ url_for('parent.dashboard') }}">🏠 <span>Home</span></a>
       <a class="nav-link" href="{{ url_for('parent.students') }}">👥 <span>Students</span></a>
       <a class="nav-link" href="{{ url_for('parent.subjects') }}">📚 <span>Subjects</span></a>
+      <a class="nav-link" href="{{ url_for('jee.index') }}">🎯 <span>JEE</span></a>
       <a class="nav-link" href="{{ url_for('parent.upload') }}">⬆️ <span>Upload</span></a>
     {% endif %}
     <a class="nav-link" href="{{ url_for('auth.logout') }}">🚪 <span>Logout</span></a>

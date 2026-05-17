@@ -1,0 +1,40 @@
+{% extends "shared/base.html" %}
+{% block title %}JEE Practice – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>🎯 JEE Practice</h1>
+  <p class="subtitle">Practice with previous year question papers</p>
+</div>
+
+<div class="subject-grid">
+  {% for cat in categories %}
+  <div class="subject-card">
+    <div class="subject-card-header">
+      <div class="subject-icon">📋</div>
+      <div>
+        <div class="subject-name">{{ cat.name }}</div>
+        <div class="subject-meta">{{ cat.year_papers|length }} paper(s) available</div>
+      </div>
+    </div>
+    <div class="subject-actions">
+      {% if cat.year_papers|length > 0 %}
+      <a href="{{ url_for('student.jee_papers', cat_id=cat.id) }}" class="btn btn-primary btn-sm">
+        Browse Papers →
+      </a>
+      {% else %}
+      <span style="font-size:.82rem;color:var(--text-muted)">No papers uploaded yet</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if not categories %}
+<div class="empty-state">
+  <div class="empty-icon">📋</div>
+  <h3>No JEE papers yet</h3>
+  <p>Ask your parent to upload previous year question papers.</p>
+</div>
+{% endif %}
+{% endblock %}

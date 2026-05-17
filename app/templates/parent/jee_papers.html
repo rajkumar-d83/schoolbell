@@ -1,0 +1,82 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ category.name }} Papers – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>📋 {{ category.name }}</h1>
+  <p class="subtitle">Previous year question papers</p>
+</div>
+
+<div style="margin-bottom:1.5rem;">
+  <a href="{{ url_for('jee.add_paper', cat_id=category.id) }}" class="btn btn-primary">
+    + Add Year Paper
+  </a>
+  <a href="{{ url_for('jee.index') }}" class="btn btn-outline ml-1">← Back</a>
+</div>
+
+{% if year_papers %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Year</th>
+        <th>Paper</th>
+        <th>Questions</th>
+        <th>Source</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for paper in year_papers %}
+      <tr>
+        <td><strong>{{ paper.year }}</strong></td>
+        <td>{{ paper.paper_name }}</td>
+        <td>
+          {% set q_count = paper.questions|length %}
+          {% if q_count > 0 %}
+            <span style="color:var(--emerald)">{{ q_count }} questions</span>
+          {% else %}
+            <span style="color:var(--text-muted)">Not extracted yet</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if paper.source_url %}
+            <a href="{{ paper.source_url }}" target="_blank" rel="noopener"
+               style="color:var(--indigo);font-size:.8rem;">URL ↗</a>
+          {% else %}
+            <span style="color:var(--text-muted);font-size:.8rem;">Uploaded</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+            <a href="{{ url_for('jee.generate_questions', paper_id=paper.id) }}"
+               class="btn btn-sm btn-primary">Extract Q's</a>
+            {% if paper.questions|length > 0 %}
+            <a href="{{ url_for('jee.view_questions', paper_id=paper.id) }}"
+               class="btn btn-sm btn-outline">View</a>
+            {% endif %}
+            <form method="POST"
+                  action="{{ url_for('jee.delete_paper', paper_id=paper.id) }}"
+                  style="display:inline"
+                  data-confirm="Delete this paper and all its questions?">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">📄</div>
+  <h3>No papers yet</h3>
+  <p>Add a year paper by pasting a PDF URL or uploading a file.</p>
+  <a href="{{ url_for('jee.add_paper', cat_id=category.id) }}" class="btn btn-primary mt-1">
+    + Add First Paper
+  </a>
+</div>
+{% endif %}
+{% endblock %}

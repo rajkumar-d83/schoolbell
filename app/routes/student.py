@@ -4,7 +4,9 @@ from functools import wraps
 from datetime import datetime
 import json, random
 from app import db
-from app.models.models import Subject, Chapter, Question, QuizSession, QuestionAttempt
+from app.models.models import (Subject, Chapter, Question, QuizSession, QuestionAttempt,
+                               ExamCategory, YearPaper, JeeQuestion,
+                               JeeQuizSession, JeeQuestionAttempt)
 from app.services.analytics import (get_student_performance, get_student_badges,
                                     xp_for_session, compute_total_xp, get_level_info)
 
@@ -342,3 +344,181 @@ def subject_cheatsheet(subject_id):
                            subject=subject,
                            chapter_data=chapter_data,
                            is_parent=False)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# JEE SECTION
+# ══════════════════════════════════════════════════════════════════════════════
+
+@student_bp.route('/jee')
+@login_required
+@student_required
+def jee_home():
+    categories = ExamCategory.query.order_by(ExamCategory.name).all()
+    return render_template('student/jee.html', categories=categories)
+
+
+@student_bp.route('/jee/<int:cat_id>')
+@login_required
+@student_required
+def jee_papers(cat_id):
+    category = ExamCategory.query.get_or_404(cat_id)
+    year_papers = (YearPaper.query
+                   .filter_by(category_id=cat_id)
+                   .order_by(YearPaper.year.desc(), YearPaper.paper_name)
+                   .all())
+    return render_template('student/jee_papers.html',
+                           category=category, year_papers=year_papers)
+
+
+@student_bp.route('/jee/quiz/start/<int:paper_id>')
+@login_required
+@student_required
+def start_jee_quiz(paper_id):
+    paper = YearPaper.query.get_or_404(paper_id)
+    all_questions = JeeQuestion.query.filter_by(year_paper_id=paper_id).all()
+
+    if not all_questions:
+        flash('No questions available for this paper yet.', 'warning')
+        return redirect(url_for('student.jee_papers', cat_id=paper.category_id))
+
+    prev_correct_ids = {
+        row[0] for row in
+        db.session.query(JeeQuestionAttempt.question_id)
+        .join(JeeQuizSession, JeeQuestionAttempt.session_id == JeeQuizSession.id)
+        .filter(
+            JeeQuizSession.student_id == current_user.id,
+            JeeQuizSession.year_paper_id == paper_id,
+            JeeQuizSession.is_completed == True,
+            JeeQuestionAttempt.is_correct == True
+        ).all()
+    }
+
+    fresh    = [q for q in all_questions if q.id not in prev_correct_ids]
+    mastered = [q for q in all_questions if q.id in prev_correct_ids]
+
+    if len(fresh) >= QUIZ_SIZE:
+        selected = random.sample(fresh, QUIZ_SIZE)
+    else:
+        pad = random.sample(mastered, min(QUIZ_SIZE - len(fresh), len(mastered)))
+        selected = fresh + pad
+        random.shuffle(selected)
+
+    session = JeeQuizSession(
+        student_id    = current_user.id,
+        year_paper_id = paper_id,
+        total_questions = len(selected),
+        question_ids  = json.dumps([q.id for q in selected])
+    )
+    db.session.add(session)
+    db.session.commit()
+    return redirect(url_for('student.jee_quiz', session_id=session.id, question_index=0))
+
+
+@student_bp.route('/jee/quiz/<int:session_id>/<int:question_index>')
+@login_required
+def jee_quiz(session_id, question_index):
+    quiz_session  = JeeQuizSession.query.get_or_404(session_id)
+    question_ids  = json.loads(quiz_session.question_ids)
+
+    if question_index >= len(question_ids):
+        return redirect(url_for('student.complete_jee_quiz', session_id=session_id))
+
+    question = JeeQuestion.query.get(question_ids[question_index])
+    paper    = YearPaper.query.get(quiz_session.year_paper_id)
+    return render_template('student/jee_quiz.html',
+                           quiz_session=quiz_session,
+                           paper=paper,
+                           question=question,
+                           question_index=question_index,
+                           total_questions=len(question_ids),
+                           session_id=session_id)
+
+
+@student_bp.route('/jee/quiz/submit', methods=['POST'])
+@login_required
+def submit_jee_answer():
+    session_id     = request.form.get('session_id', type=int)
+    question_id    = request.form.get('question_id', type=int)
+    question_index = request.form.get('question_index', type=int)
+    chosen_answer  = request.form.get('chosen_answer', '').strip().upper() or None
+    time_taken     = request.form.get('time_taken', type=int)
+
+    quiz_session = JeeQuizSession.query.get_or_404(session_id)
+    question     = JeeQuestion.query.get_or_404(question_id)
+    is_correct   = chosen_answer == question.correct_answer
+
+    db.session.add(JeeQuestionAttempt(
+        session_id         = session_id,
+        question_id        = question_id,
+        chosen_answer      = chosen_answer,
+        is_correct         = is_correct,
+        time_taken_seconds = time_taken
+    ))
+    if is_correct:
+        quiz_session.correct_answers += 1
+    db.session.commit()
+
+    next_index   = question_index + 1
+    question_ids = json.loads(quiz_session.question_ids)
+    is_last      = next_index >= len(question_ids)
+    next_url     = (url_for('student.complete_jee_quiz', session_id=session_id)
+                    if is_last
+                    else url_for('student.jee_quiz', session_id=session_id,
+                                 question_index=next_index))
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        correct_text = getattr(question, 'option_' + question.correct_answer.lower(), '')
+        return jsonify({
+            'is_correct':     is_correct,
+            'correct_answer': question.correct_answer,
+            'correct_text':   correct_text,
+            'chosen_answer':  chosen_answer,
+            'explanation':    question.explanation or '',
+            'next_url':       next_url,
+            'is_last':        is_last,
+        })
+    return redirect(next_url)
+
+
+@student_bp.route('/jee/quiz/<int:session_id>/complete')
+@login_required
+def complete_jee_quiz(session_id):
+    quiz_session = JeeQuizSession.query.get_or_404(session_id)
+    if not quiz_session.is_completed:
+        if quiz_session.total_questions > 0:
+            quiz_session.score_percent = (
+                quiz_session.correct_answers / quiz_session.total_questions * 100
+            )
+        quiz_session.is_completed = True
+        quiz_session.completed_at = datetime.utcnow()
+        db.session.commit()
+
+    attempts  = JeeQuestionAttempt.query.filter_by(session_id=session_id).all()
+    xp_gained = xp_for_session(quiz_session.score_percent)
+    all_sessions = QuizSession.query.filter_by(student_id=quiz_session.student_id,
+                                               is_completed=True).all()
+    level_info = get_level_info(compute_total_xp(all_sessions))
+    return render_template('student/jee_complete.html',
+                           quiz_session=quiz_session, attempts=attempts,
+                           xp_gained=xp_gained, level_info=level_info)
+
+
+@student_bp.route('/jee/quiz/<int:session_id>/message')
+@login_required
+def jee_message(session_id):
+    from app.services.ai_messages import generate_quiz_message
+    quiz_session = JeeQuizSession.query.get_or_404(session_id)
+    paper        = YearPaper.query.get(quiz_session.year_paper_id)
+    all_sessions = QuizSession.query.filter_by(student_id=quiz_session.student_id,
+                                               is_completed=True).all()
+    level_info = get_level_info(compute_total_xp(all_sessions))
+    message = generate_quiz_message(
+        student_name   = current_user.name,
+        chapter_title  = f'{paper.category.name} {paper.year} – {paper.paper_name}' if paper else 'the paper',
+        score_percent  = quiz_session.score_percent,
+        correct        = quiz_session.correct_answers,
+        total          = quiz_session.total_questions,
+        level_name     = level_info['name'],
+    )
+    return jsonify({'message': message})

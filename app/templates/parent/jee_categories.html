@@ -1,0 +1,39 @@
+{% extends "shared/base.html" %}
+{% block title %}JEE Exam Papers – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>🎯 JEE Exam Papers</h1>
+  <p class="subtitle">Previous year question papers for JEE Main and JEE Advanced</p>
+</div>
+
+<div class="subject-grid">
+  {% for cat in categories %}
+  <div class="subject-card">
+    <div class="subject-card-header">
+      <div class="subject-icon">📋</div>
+      <div>
+        <div class="subject-name">{{ cat.name }}</div>
+        <div class="subject-meta">{{ cat.year_papers|length }} paper(s) uploaded</div>
+      </div>
+    </div>
+    {% if cat.description %}
+    <p style="font-size:.82rem; color:var(--text-muted); margin:.5rem 0 1rem;">{{ cat.description }}</p>
+    {% endif %}
+    <div class="subject-actions">
+      <a href="{{ url_for('jee.papers', cat_id=cat.id) }}" class="btn btn-primary btn-sm">
+        Manage Papers →
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if not categories %}
+<div class="empty-state">
+  <div class="empty-icon">📋</div>
+  <h3>No exam categories yet</h3>
+  <p>Run the deploy script to auto-create JEE Main and JEE Advanced categories.</p>
+</div>
+{% endif %}
+{% endblock %}

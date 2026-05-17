@@ -1,0 +1,87 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ category.name }} {{ paper.year }} Questions – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>❓ {{ category.name }} {{ paper.year }} — {{ paper.paper_name }}</h1>
+  <p class="subtitle">{{ questions|length }} question(s) in bank</p>
+</div>
+
+<div style="margin-bottom:1.5rem;display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;">
+  <a href="{{ url_for('jee.papers', cat_id=category.id) }}" class="btn btn-outline btn-sm">← Papers</a>
+  <a href="{{ url_for('jee.generate_questions', paper_id=paper.id) }}" class="btn btn-primary btn-sm">
+    Re-extract Questions
+  </a>
+</div>
+
+{% if questions %}
+<!-- Subject filter pills -->
+{% set subjects = questions | map(attribute='subject_tag') | select | unique | list | sort %}
+{% if subjects %}
+<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <button class="btn btn-sm btn-outline filter-btn active" data-subject="all">All</button>
+  {% for subj in subjects %}
+  <button class="btn btn-sm btn-outline filter-btn" data-subject="{{ subj }}">{{ subj }}</button>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="table-wrap">
+  <table class="data-table" id="q-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Subject</th>
+        <th>Topic</th>
+        <th>Question</th>
+        <th>Answer</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for q in questions %}
+      <tr data-subject="{{ q.subject_tag or '' }}">
+        <td style="color:var(--text-muted)">{{ loop.index }}</td>
+        <td>
+          {% if q.subject_tag %}
+          <span class="badge badge-{% if q.subject_tag == 'Physics' %}indigo{% elif q.subject_tag == 'Chemistry' %}emerald{% else %}amber{% endif %}">
+            {{ q.subject_tag }}
+          </span>
+          {% endif %}
+        </td>
+        <td style="font-size:.8rem;color:var(--text-muted)">{{ q.topic_tag or '—' }}</td>
+        <td style="max-width:380px;font-size:.88rem;">{{ q.question_text[:120] }}{% if q.question_text|length > 120 %}…{% endif %}</td>
+        <td>
+          <span style="font-weight:700;color:var(--emerald)">{{ q.correct_answer }}</span>
+          <span style="font-size:.82rem;color:var(--text-muted)">
+            — {{ getattr(q, 'option_' + q.correct_answer.lower(), '')[:50] }}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const subj = this.dataset.subject;
+    document.querySelectorAll('#q-table tbody tr').forEach(row => {
+      row.style.display = (subj === 'all' || row.dataset.subject === subj) ? '' : 'none';
+    });
+  });
+});
+</script>
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">❓</div>
+  <h3>No questions yet</h3>
+  <p>Extract questions from the exam paper using Google AI.</p>
+  <a href="{{ url_for('jee.generate_questions', paper_id=paper.id) }}"
+     class="btn btn-primary mt-1">Extract Questions</a>
+</div>
+{% endif %}
+{% endblock %}

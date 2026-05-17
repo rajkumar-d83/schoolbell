@@ -33,7 +33,7 @@
     <div class="form-group">
       <label class="form-label">Grade</label>
       <select name="grade" class="form-control" required>
-        {% for g in range(1, 11) %}
+        {% for g in range(1, 13) %}
         <option value="{{ g }}" {% if student.grade == g %}selected{% endif %}>Grade {{ g }}</option>
         {% endfor %}
       </select>

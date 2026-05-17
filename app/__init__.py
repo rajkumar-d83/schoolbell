@@ -46,11 +46,13 @@ def create_app(config_name='development'):
     from app.routes.main import main_bp
     from app.routes.student import student_bp
     from app.routes.parent import parent_bp
+    from app.routes.jee import jee_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(student_bp)
     app.register_blueprint(parent_bp)
+    app.register_blueprint(jee_bp)
 
     @app.errorhandler(404)
     def not_found(e):

@@ -1,0 +1,73 @@
+{% extends "shared/base.html" %}
+{% block title %}Add Paper – {{ category.name }} – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>📄 Add Year Paper</h1>
+  <p class="subtitle">{{ category.name }} — paste a URL or upload a PDF</p>
+</div>
+
+<div class="form-card">
+  <form method="POST" enctype="multipart/form-data" id="add-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div class="form-group">
+        <label class="form-label">Year *</label>
+        <input type="number" name="year" class="form-control"
+               min="2000" max="2030" placeholder="e.g. 2023" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Paper Name *</label>
+        <input type="text" name="paper_name" class="form-control"
+               placeholder="e.g. Paper 1 – Shift 1" required>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">PDF URL</label>
+      <input type="url" name="source_url" id="source_url" class="form-control"
+             placeholder="https://example.com/jee-2023-paper1.pdf">
+      <div style="font-size:.78rem;color:var(--text-muted);margin-top:.3rem;">
+        Paste a direct link to the PDF. The server will download it automatically.
+      </div>
+    </div>
+
+    <div style="text-align:center;color:var(--text-muted);margin:.5rem 0;font-size:.85rem;">— or —</div>
+
+    <div class="form-group">
+      <label class="form-label">Upload PDF</label>
+      <input type="file" name="pdf_file" id="pdf_file" class="form-control" accept=".pdf">
+    </div>
+
+    <div class="ai-note">
+      <span class="ai-icon">ℹ️</span>
+      After adding the paper, Google AI will extract all MCQ questions automatically.
+      Text-based PDFs work best — scanned images may not extract correctly.
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-lg" id="add-btn">
+        Add Paper →
+      </button>
+      <a href="{{ url_for('jee.papers', cat_id=category.id) }}"
+         class="btn btn-outline ml-1">Cancel</a>
+    </div>
+  </form>
+
+  <div class="spinner-overlay" id="spinner" style="display:none">
+    <div class="spinner-box">
+      <div class="spinner-ring"></div>
+      <div class="spinner-text">Downloading & processing PDF…</div>
+      <div class="spinner-subtext">This may take up to 30 seconds</div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('add-form').addEventListener('submit', function() {
+  document.getElementById('add-btn').disabled = true;
+  document.getElementById('spinner').style.display = 'flex';
+});
+</script>
+{% endblock %}

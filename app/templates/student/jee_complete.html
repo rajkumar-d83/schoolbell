@@ -1,0 +1,197 @@
+{% extends "shared/base.html" %}
+{% block title %}JEE Quiz Complete – SchoolBell{% endblock %}
+
+{% block content %}
+{% set score   = quiz_session.score_percent %}
+{% set perfect = score == 100 %}
+{% set great   = score >= 80 %}
+{% set ok      = score >= 60 %}
+{% set paper   = quiz_session.year_paper %}
+
+{% if ok %}
+<canvas id="confetti-canvas" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:999;"></canvas>
+{% endif %}
+
+<div class="quiz-complete-wrap">
+
+  <!-- Score -->
+  <div class="score-circle-wrap">
+    {% if perfect %}
+    <div class="score-circle score-great perfect-glow"><span class="score-percent">100%</span></div>
+    <h2 class="score-message">🏆 PERFECT SCORE! You're JEE ready! 🏆</h2>
+    <div class="celebration-big" aria-hidden="true">
+      <span>🌟</span><span>🎉</span><span>⭐</span><span>🏆</span><span>✨</span><span>🎊</span>
+    </div>
+    {% elif great %}
+    <div class="score-circle score-great"><span class="score-percent">{{ '%.0f'|format(score) }}%</span></div>
+    <h2 class="score-message">🥳 Excellent! Strong JEE prep!</h2>
+    <div class="celebration-big" aria-hidden="true">
+      <span>⭐</span><span>🎉</span><span>🌟</span><span>✨</span><span>⭐</span>
+    </div>
+    {% elif ok %}
+    <div class="score-circle score-ok"><span class="score-percent">{{ '%.0f'|format(score) }}%</span></div>
+    <h2 class="score-message">👍 Good effort! JEE questions are tough — keep practising!</h2>
+    {% else %}
+    <div class="score-circle score-poor"><span class="score-percent">{{ '%.0f'|format(score) }}%</span></div>
+    <h2 class="score-message">💪 JEE is hard! Review the solutions and try again!</h2>
+    {% endif %}
+  </div>
+
+  <p style="text-align:center;color:var(--text-muted);font-size:.85rem;margin-top:-.5rem;margin-bottom:1rem;">
+    {{ paper.category.name }} {{ paper.year }} — {{ paper.paper_name }}
+  </p>
+
+  <!-- XP -->
+  <div class="xp-gained-wrap">
+    <div class="xp-gained-pill">+{{ xp_gained }} XP</div>
+    <div class="xp-level-line">
+      <span>{{ level_info.icon }} {{ level_info.name }} &nbsp; Lv.{{ level_info.level }}</span>
+      <div class="xp-bar-track xp-bar-mini">
+        <div class="xp-bar-fill" style="width:{{ level_info.progress }}%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI message -->
+  <div class="ai-message-wrap" id="ai-message-wrap">
+    <div class="ai-message-loading" id="ai-msg-loading">
+      <div class="ai-thinking-dots"><span></span><span></span><span></span></div>
+      <span>Getting your personal feedback…</span>
+    </div>
+    <div class="ai-message-card" id="ai-msg-card" style="display:none;"></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="result-stats">
+    <div class="result-stat">
+      <div class="result-stat-num correct">{{ quiz_session.correct_answers }}</div>
+      <div class="result-stat-label">✅ Correct</div>
+    </div>
+    <div class="result-stat">
+      <div class="result-stat-num wrong">{{ quiz_session.total_questions - quiz_session.correct_answers }}</div>
+      <div class="result-stat-label">❌ Wrong</div>
+    </div>
+    <div class="result-stat">
+      <div class="result-stat-num">{{ quiz_session.total_questions }}</div>
+      <div class="result-stat-label">📝 Total</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="result-actions">
+    <a href="{{ url_for('student.start_jee_quiz', paper_id=paper.id) }}"
+       class="btn btn-primary">🔄 Try Again</a>
+    <a href="{{ url_for('student.jee_papers', cat_id=paper.category_id) }}"
+       class="btn btn-outline ml-1">← All Papers</a>
+  </div>
+
+  <!-- Review -->
+  <div class="review-section">
+    <h3>📋 Question Review</h3>
+    {% for attempt in attempts %}
+    <div class="review-card {% if attempt.is_correct %}review-correct{% else %}review-wrong{% endif %}">
+      <div class="review-q-num">Q{{ loop.index }}</div>
+      <div class="review-body">
+        {% if attempt.question.subject_tag %}
+        <div style="font-size:.72rem;color:var(--indigo);margin-bottom:.3rem;font-weight:600;">
+          {{ attempt.question.subject_tag }}{% if attempt.question.topic_tag %} · {{ attempt.question.topic_tag }}{% endif %}
+        </div>
+        {% endif %}
+        <p class="review-question">{{ attempt.question.question_text }}</p>
+        {% if attempt.question.diagram_svg %}
+        <div class="question-diagram question-diagram-sm">{{ attempt.question.diagram_svg | safe }}</div>
+        {% endif %}
+        <div class="review-answers">
+          <span class="review-label">Your answer:</span>
+          <span class="{% if attempt.is_correct %}answer-correct{% else %}answer-wrong{% endif %}">
+            {{ attempt.chosen_answer or 'Skipped' }}
+            {% if attempt.chosen_answer %}
+              – {{ attempt.question['option_' + attempt.chosen_answer.lower()] }}
+            {% endif %}
+          </span>
+        </div>
+        {% if not attempt.is_correct %}
+        <div class="review-answers">
+          <span class="review-label">Correct answer:</span>
+          <span class="answer-correct">
+            {{ attempt.question.correct_answer }}
+            – {{ attempt.question['option_' + attempt.question.correct_answer.lower()] }}
+          </span>
+        </div>
+        {% endif %}
+        {% if attempt.question.explanation %}
+        <div class="review-explanation">💡 {{ attempt.question.explanation }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<script>
+(function() {
+  fetch('/student/jee/quiz/{{ quiz_session.id }}/message')
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('ai-msg-loading').style.display = 'none';
+      const card = document.getElementById('ai-msg-card');
+      if (data.message) {
+        card.textContent = data.message;
+        card.style.display = 'block';
+        card.classList.add('fade-in');
+      } else {
+        document.getElementById('ai-message-wrap').style.display = 'none';
+      }
+    })
+    .catch(() => { document.getElementById('ai-message-wrap').style.display = 'none'; });
+})();
+</script>
+
+{% if ok %}
+<script>
+(function() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const isPerfect = {{ 'true' if perfect else 'false' }};
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const COLORS = isPerfect
+    ? ['#FBBF24','#818CF8','#34D399','#F87171','#60A5FA','#FCD34D','#fff']
+    : ['#2e7d32','#e65100','#1a3a5c','#f57f17','#c62828'];
+  const count = isPerfect ? 160 : 80;
+  const maxFrames = isPerfect ? 420 : 240;
+  const pieces = Array.from({length: count}, (_, i) => {
+    const fromBottom = isPerfect && i < count * 0.6;
+    return {
+      x: Math.random() * canvas.width,
+      y: fromBottom ? canvas.height + 10 : Math.random() * -canvas.height,
+      vy: fromBottom ? -(6 + Math.random() * 10) : (2 + Math.random() * 4),
+      gravity: fromBottom ? 0.18 : 0,
+      r: isPerfect ? (5 + Math.random() * 8) : (4 + Math.random() * 6),
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      vx: (Math.random() - 0.5) * 4,
+      spin: (Math.random() - 0.5) * 0.3,
+      angle: Math.random() * Math.PI * 2,
+    };
+  });
+  let frame = 0;
+  function draw() {
+    if (frame++ > maxFrames) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      p.vy += p.gravity;
+      p.x += p.vx; p.y += p.vy; p.angle += p.spin;
+      ctx.save();
+      ctx.translate(p.x, p.y); ctx.rotate(p.angle);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r * 0.6);
+      ctx.restore();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+{% endif %}
+{% endblock %}

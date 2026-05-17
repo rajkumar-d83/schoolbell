@@ -1,0 +1,174 @@
+{% extends "shared/base.html" %}
+{% block title %}JEE Quiz – {{ paper.year }} {{ paper.paper_name }}{% endblock %}
+
+{% block content %}
+<!-- Progress Bar -->
+<div class="quiz-progress-wrap">
+  <div class="quiz-progress-bar"
+       style="width: {{ ((question_index) / total_questions * 100)|int }}%"></div>
+</div>
+
+<div id="star-burst" class="star-burst" aria-hidden="true">🌟🎉⭐🏆✨🎊⭐🌟</div>
+
+<div class="quiz-container" id="quiz-container">
+
+  <div class="quiz-header">
+    <span class="quiz-chapter-name">
+      {{ paper.category.name }} {{ paper.year }} — {{ paper.paper_name }}
+      {% if question.subject_tag %}
+        <span style="margin-left:.4rem;font-size:.75rem;opacity:.7">· {{ question.subject_tag }}</span>
+      {% endif %}
+    </span>
+    <span class="quiz-counter">Question {{ question_index + 1 }} of {{ total_questions }}</span>
+    <span class="quiz-timer" id="quiz-timer">⏱ 60s</span>
+  </div>
+
+  <div class="question-text">{{ question.question_text }}</div>
+
+  {% if question.diagram_svg %}
+  <div class="question-diagram">{{ question.diagram_svg | safe }}</div>
+  {% endif %}
+
+  <input type="hidden" id="csrf-token"     value="{{ csrf_token() }}">
+  <input type="hidden" id="session-id"     value="{{ session_id }}">
+  <input type="hidden" id="question-id"    value="{{ question.id }}">
+  <input type="hidden" id="question-index" value="{{ question_index }}">
+
+  <div class="options-grid" id="options-grid">
+    {% for label, text in [('A', question.option_a), ('B', question.option_b),
+                            ('C', question.option_c), ('D', question.option_d)] %}
+    <button type="button" class="option-btn" data-value="{{ label }}"
+            onclick="selectOption(this)">
+      <span class="option-label">{{ label }}</span>
+      <span class="option-text">{{ text }}</span>
+    </button>
+    {% endfor %}
+  </div>
+
+  <div class="quiz-actions" id="submit-area">
+    <button class="btn btn-primary btn-lg w-full" id="submit-btn"
+            onclick="submitAnswer()" disabled>
+      Check Answer ✓
+    </button>
+  </div>
+
+  <div id="feedback-panel" class="feedback-panel" style="display:none;">
+    <div class="feedback-top">
+      <span id="feedback-icon" class="feedback-big-icon"></span>
+      <div id="feedback-title" class="feedback-title"></div>
+    </div>
+    <div id="celebration" class="celebration-wrap" style="display:none;" aria-hidden="true">
+      <span>⭐</span><span>🌟</span><span>✨</span><span>🎉</span><span>⭐</span>
+    </div>
+    <div id="feedback-explanation" class="feedback-explanation"></div>
+    <div style="text-align:center; margin-top:1.25rem;">
+      <a id="next-btn" href="#" class="btn btn-primary btn-lg">Next Question →</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let selectedAnswer = null;
+let answered       = false;
+const TOTAL_TIME   = 60;
+let timeLeft       = TOTAL_TIME;
+let timerInterval;
+const timerEl      = document.getElementById('quiz-timer');
+const startTime    = Date.now();
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function tick() {
+  timeLeft--;
+  timerEl.textContent = '⏱ ' + timeLeft + 's';
+  if (timeLeft <= 10) timerEl.classList.add('timer-danger');
+  if (timeLeft <= 0) { clearInterval(timerInterval); submitAnswer(); }
+}
+function startTimer() { timerInterval = setInterval(tick, 1000); }
+
+document.addEventListener('visibilitychange', () => {
+  if (answered) return;
+  document.hidden ? clearInterval(timerInterval) : (timerInterval = setInterval(tick, 1000));
+});
+
+function selectOption(btn) {
+  if (answered) return;
+  document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedAnswer = btn.dataset.value;
+  document.getElementById('submit-btn').disabled = false;
+}
+
+function submitAnswer() {
+  if (answered) return;
+  answered = true;
+  clearInterval(timerInterval);
+  const timeTaken = Math.round((Date.now() - startTime) / 1000);
+  const submitBtn = document.getElementById('submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Checking…';
+
+  const fd = new FormData();
+  fd.append('csrf_token',     document.getElementById('csrf-token').value);
+  fd.append('session_id',     document.getElementById('session-id').value);
+  fd.append('question_id',    document.getElementById('question-id').value);
+  fd.append('question_index', document.getElementById('question-index').value);
+  fd.append('chosen_answer',  selectedAnswer || '');
+  fd.append('time_taken',     timeTaken);
+
+  const controller = new AbortController();
+  const timeout    = setTimeout(() => controller.abort(), 10000);
+
+  fetch('{{ url_for("student.submit_jee_answer") }}', {
+    method:  'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    body:    fd,
+    signal:  controller.signal
+  })
+  .then(r => { clearTimeout(timeout); return r.json(); })
+  .then(data => showFeedback(data))
+  .catch(() => { clearTimeout(timeout); window.location = '{{ url_for("student.jee_home") }}'; });
+}
+
+function showFeedback(data) {
+  document.querySelectorAll('.option-btn').forEach(btn => {
+    btn.disabled = true;
+    btn.classList.remove('selected');
+    if (btn.dataset.value === data.correct_answer) btn.classList.add('option-correct');
+    else if (btn.dataset.value === data.chosen_answer && !data.is_correct) btn.classList.add('option-wrong');
+  });
+  document.getElementById('submit-area').style.display = 'none';
+  const panel = document.getElementById('feedback-panel');
+  panel.style.display = 'block';
+  if (data.is_correct) {
+    panel.className = 'feedback-panel feedback-correct';
+    document.getElementById('feedback-icon').textContent  = '🎉';
+    document.getElementById('feedback-title').textContent = pickPraise();
+    document.getElementById('celebration').style.display  = 'flex';
+    fireBurst();
+  } else {
+    panel.className = 'feedback-panel feedback-wrong';
+    document.getElementById('feedback-icon').textContent = '💡';
+    document.getElementById('feedback-title').innerHTML  =
+      'The correct answer is <strong>' + data.correct_answer + '</strong> — keep going!';
+  }
+  if (data.explanation) document.getElementById('feedback-explanation').textContent = data.explanation;
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.href        = data.next_url;
+  nextBtn.textContent = data.is_last ? '🏁 See My Results!' : 'Next Question →';
+}
+
+const praises = ['🎉 Brilliant!', '⭐ Superstar!', '🏆 Amazing!', '🌟 Nailed it!', '🎊 Fantastic!', '🥳 Spot on!'];
+function pickPraise() { return praises[Math.floor(Math.random() * praises.length)]; }
+
+function fireBurst() {
+  if (reducedMotion) return;
+  const burst = document.getElementById('star-burst');
+  burst.style.display = 'block';
+  burst.classList.add('burst-animate');
+  setTimeout(() => { burst.style.display = 'none'; burst.classList.remove('burst-animate'); }, 1800);
+}
+
+startTimer();
+</script>
+{% endblock %}

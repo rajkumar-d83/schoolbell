@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import json
+import uuid
 import fitz  # PyMuPDF
 
 
@@ -289,3 +290,71 @@ Rules:
     except Exception as e:
         print(f"Cheatsheet generation error: {e}")
         return None
+
+
+def download_pdf_from_url(url, upload_folder):
+    """Download a PDF from a URL, save to upload_folder. Returns (filename, filepath).
+    Raises ValueError if the response doesn't look like a PDF, or requests exceptions on failure."""
+    import requests
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+    resp = requests.get(url, timeout=60, headers=headers, stream=True)
+    resp.raise_for_status()
+    content_type = resp.headers.get('content-type', '').lower()
+    if 'pdf' not in content_type and not url.lower().split('?')[0].endswith('.pdf'):
+        raise ValueError(f'URL does not appear to be a PDF (Content-Type: {content_type})')
+    filename = str(uuid.uuid4()) + '.pdf'
+    filepath = os.path.join(upload_folder, filename)
+    with open(filepath, 'wb') as f:
+        for chunk in resp.iter_content(chunk_size=8192):
+            f.write(chunk)
+    return filename, filepath
+
+
+def extract_jee_questions_from_paper(pdf_text, year, paper_name, category_name):
+    """Extract and format MCQ questions from a JEE exam paper PDF via AI."""
+    try:
+        prompt = f"""You are an expert at extracting JEE exam questions. Extract all multiple choice questions from this {category_name} {year} {paper_name} paper.
+
+Paper content:
+{pdf_text[:15000]}
+
+For EACH MCQ question found in the paper:
+- Extract the exact question text (including any numerical values, symbols, formulas)
+- Extract all 4 options (A, B, C, D) exactly as written
+- Identify the correct answer (use the answer key if present in the paper, otherwise use your knowledge)
+- Write a clear 1-2 sentence explanation of why the answer is correct
+- Identify the subject: "Physics", "Chemistry", "Mathematics", or "Biology"
+- Identify the specific topic (e.g., "kinematics", "electrochemistry", "integration")
+
+Return ONLY a valid JSON array. Each object must have exactly these keys:
+- "question_text": full question text
+- "option_a", "option_b", "option_c", "option_d": the four choices
+- "correct_answer": "A", "B", "C", or "D"
+- "explanation": 1-2 sentence explanation of the correct answer
+- "difficulty": always "hard" for JEE
+- "topic_tag": specific topic (e.g. "kinematics", "p-block elements")
+- "subject_tag": "Physics", "Chemistry", "Mathematics", or "Biology"
+- "diagram_svg": null for most questions. Only provide SVG for pure geometry/graph questions using viewBox="0 0 240 160", stroke="#94A3B8", fill="#818CF8" for highlights. Max 12 elements. No script/events.
+
+Return only the JSON array, nothing else."""
+
+        _log(f'[extract_jee] calling AI for {category_name} {year} {paper_name}…')
+        response_text = _call_ai(prompt, max_tokens=32000, timeout=300.0)
+        response_text = _strip_fences(response_text)
+        _log(f'[extract_jee] response received — {len(response_text)} chars')
+
+        questions = json.loads(response_text)
+        for q in questions:
+            raw_svg = q.get('diagram_svg')
+            q['diagram_svg'] = sanitize_svg(raw_svg) if raw_svg else None
+        _log(f'[extract_jee] parsed {len(questions)} questions')
+        return questions
+
+    except json.JSONDecodeError as e:
+        _log(f'[extract_jee] JSON parse error: {e}')
+        return []
+    except Exception as e:
+        _log(f'[extract_jee] error: {type(e).__name__}: {e}')
+        return []

@@ -1,0 +1,46 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ category.name }} Papers – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>📋 {{ category.name }}</h1>
+  <p class="subtitle">Select a year paper to start a practice quiz</p>
+</div>
+
+<div style="margin-bottom:1.5rem;">
+  <a href="{{ url_for('student.jee_home') }}" class="btn btn-outline btn-sm">← Back</a>
+</div>
+
+{% if year_papers %}
+<div class="subject-grid">
+  {% for paper in year_papers %}
+  {% set q_count = paper.questions|length %}
+  <div class="subject-card">
+    <div class="subject-card-header">
+      <div class="subject-icon" style="font-size:1.4rem;font-weight:800;color:var(--amber)">
+        {{ paper.year }}
+      </div>
+      <div>
+        <div class="subject-name">{{ paper.paper_name }}</div>
+        <div class="subject-meta">{{ q_count }} question(s)</div>
+      </div>
+    </div>
+    <div class="subject-actions">
+      {% if q_count > 0 %}
+      <a href="{{ url_for('student.start_jee_quiz', paper_id=paper.id) }}"
+         class="btn btn-primary btn-sm">Start Quiz →</a>
+      {% else %}
+      <span style="font-size:.82rem;color:var(--text-muted)">Questions not ready yet</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">📄</div>
+  <h3>No papers yet</h3>
+  <p>Your parent hasn't uploaded any papers for {{ category.name }} yet.</p>
+</div>
+{% endif %}
+{% endblock %}

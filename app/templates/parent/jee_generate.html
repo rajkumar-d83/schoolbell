@@ -1,0 +1,64 @@
+{% extends "shared/base.html" %}
+{% block title %}Extract Questions – SchoolBell{% endblock %}
+
+{% block content %}
+<div class="page-header parent-header">
+  <h1>🤖 Extract Questions</h1>
+  <p class="subtitle">Google AI will extract MCQ questions from the exam paper</p>
+</div>
+
+<div class="form-card">
+  <div class="chapter-info-box">
+    <div class="chapter-info-title">{{ category.name }} — {{ paper.year }} {{ paper.paper_name }}</div>
+    <div class="chapter-info-meta">
+      {% if existing_count > 0 %}
+        {{ existing_count }} questions already in bank
+      {% else %}
+        No questions extracted yet
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="POST" id="gen-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="ai-note">
+      <span class="ai-icon">✨</span>
+      Google AI will read the paper and extract all multiple choice questions with correct answers,
+      explanations, subject tags (Physics / Chemistry / Math), and topic labels.
+    </div>
+
+    {% if not paper.pdf_text %}
+    <div class="flash-container">
+      <div class="flash flash-warning">
+        ⚠️ No PDF text found for this paper. Please delete and re-add it with a valid text-based PDF.
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-lg" id="gen-btn"
+              {% if not paper.pdf_text %}disabled{% endif %}>
+        Extract Questions →
+      </button>
+      <a href="{{ url_for('jee.papers', cat_id=category.id) }}"
+         class="btn btn-outline ml-1">Back</a>
+    </div>
+  </form>
+
+  <div class="spinner-overlay" id="spinner" style="display:none">
+    <div class="spinner-box">
+      <div class="spinner-ring"></div>
+      <div class="spinner-text">AI is reading the exam paper…</div>
+      <div class="spinner-subtext">JEE papers have 75–90 questions — this may take 60–120 seconds</div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('gen-form').addEventListener('submit', function() {
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('spinner').style.display = 'flex';
+});
+</script>
+{% endblock %}
