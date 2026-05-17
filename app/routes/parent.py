@@ -377,6 +377,16 @@ def generate_images(chapter_id):
                            chapter=chapter, questions=questions)
 
 
+@parent_bp.route('/questions/<int:question_id>/clear-image', methods=['POST'])
+@login_required
+@parent_required
+def clear_single_image(question_id):
+    question = Question.query.get_or_404(question_id)
+    question.diagram_svg = None
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
 @parent_bp.route('/questions/<int:question_id>/generate-image', methods=['POST'])
 @login_required
 @parent_required

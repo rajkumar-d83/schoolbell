@@ -61,11 +61,28 @@
       {{ q.question_text[:130] }}{% if q.question_text | length > 130 %}…{% endif %}
     </div>
 
-    <div class="img-gen-status" id="status-{{ q.id }}">
+    <div style="display:flex; align-items:center; gap:.5rem; margin-top:.25rem;">
+      <div class="img-gen-status" id="status-{{ q.id }}" style="flex:1;">
+        {% if q.diagram_svg %}
+          <span style="color:var(--emerald); font-size:.78rem;">✓ Generated</span>
+        {% else %}
+          <span style="color:var(--text-muted); font-size:.78rem;">No image yet</span>
+        {% endif %}
+      </div>
       {% if q.diagram_svg %}
-        <span style="color:var(--emerald); font-size:.78rem;">✓ Generated</span>
+      <button id="clear-btn-{{ q.id }}"
+              onclick="clearImage({{ q.id }})"
+              style="font-size:.72rem; padding:.2rem .5rem; background:none;
+                     border:1px solid var(--border); border-radius:4px;
+                     color:var(--text-muted); cursor:pointer; white-space:nowrap;"
+              title="Remove image">✕ Clear</button>
       {% else %}
-        <span style="color:var(--text-muted); font-size:.78rem;">No image yet</span>
+      <button id="clear-btn-{{ q.id }}" style="display:none;"
+              onclick="clearImage({{ q.id }})"
+              style="font-size:.72rem; padding:.2rem .5rem; background:none;
+                     border:1px solid var(--border); border-radius:4px;
+                     color:var(--text-muted); cursor:pointer; white-space:nowrap;"
+              title="Remove image">✕ Clear</button>
       {% endif %}
     </div>
   </div>
@@ -76,6 +93,28 @@
 
 <script>
 let running = false;
+
+function clearImage(qid) {
+  const CSRF = document.getElementById('csrf-token').value;
+  fetch('/parent/questions/' + qid + '/clear-image', {
+    method:  'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    body:    new URLSearchParams({ csrf_token: CSRF })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      document.getElementById('preview-' + qid).innerHTML =
+        '<div class="img-gen-placeholder">🖼</div>';
+      document.getElementById('status-' + qid).innerHTML =
+        '<span style="color:var(--text-muted); font-size:.78rem;">No image yet</span>';
+      const card = document.querySelector('[data-question-id="' + qid + '"]');
+      if (card) card.dataset.hasImage = '0';
+      const cb = document.getElementById('clear-btn-' + qid);
+      if (cb) cb.style.display = 'none';
+    }
+  });
+}
 
 function startGeneration() {
   if (running) return;
@@ -125,6 +164,8 @@ function startGeneration() {
         document.getElementById('status-' + qid).innerHTML =
           '<span style="color:var(--emerald); font-size:.78rem;">✓ Generated</span>';
         card.dataset.hasImage = '1';
+        const cb = document.getElementById('clear-btn-' + qid);
+        if (cb) cb.style.display = '';
       } else {
         document.getElementById('status-' + qid).innerHTML =
           '<span style="color:var(--danger); font-size:.78rem;">✗ Failed</span>';
